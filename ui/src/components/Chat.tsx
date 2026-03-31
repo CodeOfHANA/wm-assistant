@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain } from 'lucide-react';
+import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2 } from 'lucide-react';
 import { Relacottchen, WorkingRelacottchen } from './Relacottchen';
 import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
@@ -1031,12 +1031,27 @@ export function Chat({
         </AnimatePresence>
       </div>
 
-      {/* Pre-flight confirmation */}
+      {/* Pre-flight confirmation — structured action card */}
       <AnimatePresence>
         {pendingAction && (() => {
           const { message, meta } = pendingAction;
           const GI_TYPES = new Set(['916', '999', '998']);
           const isGiRisk = meta?.sourceType && GI_TYPES.has(String(meta.sourceType));
+          const isCancelOp = /^cancel\b/i.test(message.trim());
+
+          // Derive a human-readable action label + icon from the message
+          const actionInfo: { label: string; icon: React.ReactNode; danger: boolean } = (() => {
+            const m = message.trim().toLowerCase();
+            if (/^confirm\b/.test(m))    return { label: t('chat.actionConfirmTO'),   icon: <ClipboardCheck size={14} />, danger: false };
+            if (/^create replenish/i.test(m)) return { label: t('chat.actionReplenish'),   icon: <Repeat2 size={14} />,       danger: false };
+            if (/^create.*transfer/i.test(m)) return { label: t('chat.actionCreateTO'),    icon: <PackageCheck size={14} />,  danger: false };
+            if (/^create.*cycle|count/i.test(m)) return { label: t('chat.actionCreateCount'), icon: <ClipboardList size={14} />, danger: false };
+            if (/^cancel\b/.test(m))     return { label: t('chat.actionCancelTO'),    icon: <PackageX size={14} />,      danger: true  };
+            return                              { label: t('chat.actionGeneric'),      icon: <Play size={14} />,          danger: false };
+          })();
+
+          const isDanger = isGiRisk || isCancelOp || actionInfo.danger;
+
           return (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -1044,45 +1059,88 @@ export function Chat({
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.18, ease: [0.21, 0.47, 0.32, 0.98] }}
               className={clsx(
-                'mx-4 mb-2 flex items-start gap-3 rounded-xl px-4 py-3 border',
-                isGiRisk
-                  ? 'bg-red-500/10 border-red-500/30'
-                  : 'bg-wm-surface border-wm-border-hover',
+                'mx-4 mb-2 rounded-xl border overflow-hidden',
+                isDanger ? 'border-red-500/40' : 'border-wm-border-hover',
               )}
             >
-              <ShieldAlert size={15} className={clsx('flex-shrink-0 mt-0.5', isGiRisk ? 'text-red-600' : 'text-yellow-600')} />
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <p className="text-xs font-medium text-wm-text">{t('chat.confirmTitle')}</p>
-                <p className="text-xs text-wm-text-dim break-words">{message}</p>
-                {meta && (meta.material || meta.sourceBin) && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-wm-muted font-mono">
-                    {meta.material && <span>Material: <span className="text-wm-text-dim">{meta.material}</span></span>}
-                    {meta.qty != null && <span>Qty: <span className="text-wm-text-dim">{meta.qty} {meta.uom}</span></span>}
-                    {meta.sourceBin && <span>From: <span className="text-wm-text-dim">{meta.sourceType}/{meta.sourceBin}</span></span>}
-                    {meta.destBin && <span>To: <span className="text-wm-text-dim">{meta.destType}/{meta.destBin}</span></span>}
-                  </div>
-                )}
-                {isGiRisk && (
-                  <p className="text-[11px] text-red-600">
-                    {t('chat.giRiskWarning', { type: String(meta!.sourceType) })}
-                  </p>
+              {/* Card header — action type */}
+              <div className={clsx(
+                'flex items-center gap-2 px-4 py-2.5',
+                isDanger ? 'bg-red-500/10' : 'bg-wm-surface-2',
+              )}>
+                <span className={clsx('flex-shrink-0', isDanger ? 'text-red-500' : 'text-yellow-500')}>
+                  {actionInfo.icon}
+                </span>
+                <span className="text-xs font-semibold text-wm-text">{actionInfo.label}</span>
+                {isDanger && (
+                  <AlertTriangle size={12} className="ml-auto text-red-500 flex-shrink-0" />
                 )}
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+
+              {/* Meta table — structured details */}
+              {meta && (meta.material || meta.sourceBin || meta.qty != null) && (
+                <div className="px-4 py-2.5 bg-wm-surface border-t border-wm-border/60">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                    {meta.material && (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-wm-muted uppercase tracking-wide w-14 flex-shrink-0">{t('chat.metaMaterial')}</span>
+                        <span className="text-[11px] font-mono text-wm-text">{meta.material}</span>
+                      </div>
+                    )}
+                    {meta.qty != null && (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-wm-muted uppercase tracking-wide w-14 flex-shrink-0">{t('chat.metaQty')}</span>
+                        <span className="text-[11px] font-mono text-wm-text">{meta.qty} {meta.uom}</span>
+                      </div>
+                    )}
+                    {meta.sourceBin && (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-wm-muted uppercase tracking-wide w-14 flex-shrink-0">{t('chat.metaFrom')}</span>
+                        <span className="text-[11px] font-mono text-wm-text">{meta.sourceType} / {meta.sourceBin}</span>
+                      </div>
+                    )}
+                    {meta.destBin && (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-wm-muted uppercase tracking-wide w-14 flex-shrink-0">{t('chat.metaTo')}</span>
+                        <span className="text-[11px] font-mono text-wm-text">{meta.destType} / {meta.destBin}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* GI risk / cancel warning */}
+              {(isGiRisk || isCancelOp) && (
+                <div className="px-4 py-2 bg-red-500/5 border-t border-red-500/20">
+                  <p className="text-[11px] text-red-500">
+                    {isGiRisk
+                      ? t('chat.giRiskWarning', { type: String(meta!.sourceType) })
+                      : t('chat.cancelWarning')}
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className={clsx(
+                'flex items-center justify-end gap-2 px-4 py-2.5 border-t',
+                isDanger ? 'border-red-500/20 bg-red-500/5' : 'border-wm-border/60 bg-wm-surface',
+              )}>
+                <p className="text-[10px] text-wm-muted flex-1 truncate">{message}</p>
                 <button
                   onClick={() => setPendingAction(null)}
-                  className="text-xs px-3 py-1 rounded-lg bg-wm-surface-2 border border-wm-border text-wm-muted hover:text-wm-text transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-wm-surface-2 border border-wm-border text-wm-muted hover:text-wm-text transition-colors flex-shrink-0"
                 >
                   {t('chat.cancel')}
                 </button>
                 <button
                   onClick={() => { const msg = message; setPendingAction(null); handleSend(msg); }}
                   className={clsx(
-                    'text-xs px-3 py-1 rounded-lg text-white transition-colors',
-                    isGiRisk ? 'bg-red-700 hover:bg-red-600' : 'bg-wm-primary hover:bg-wm-primary-hover',
+                    'text-xs px-3 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1.5 flex-shrink-0',
+                    isDanger ? 'bg-red-700 hover:bg-red-600' : 'bg-wm-primary hover:bg-wm-primary-hover',
                   )}
                 >
-                  {isGiRisk ? t('chat.confirmAnyway') : t('chat.confirmOk')}
+                  <Play size={10} />
+                  {isDanger ? t('chat.confirmAnyway') : t('chat.confirmOk')}
                 </button>
               </div>
             </motion.div>

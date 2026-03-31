@@ -107,10 +107,22 @@ const en = {
 
   // Chat — confirm dialog
   'chat.confirmTitle':      'Confirm action',
-  'chat.confirmOk':         'Confirm',
-  'chat.confirmAnyway':     'Confirm anyway',
+  'chat.confirmOk':         'Execute',
+  'chat.confirmAnyway':     'Execute anyway',
   'chat.cancel':            'Cancel',
+  'chat.actionConfirmTO':   'Confirm Transfer Order',
+  'chat.actionCreateTO':    'Create Transfer Order',
+  'chat.actionCancelTO':    'Cancel Transfer Order',
+  'chat.actionReplenish':   'Create Replenishment TO',
+  'chat.actionCreateCount': 'Create Cycle Count',
+  'chat.actionGeneric':     'Execute Action',
+  'chat.confirmDetail':     'Action details',
+  'chat.metaMaterial':      'Material',
+  'chat.metaQty':           'Qty',
+  'chat.metaFrom':          'From',
+  'chat.metaTo':            'To',
   'chat.giRiskWarning':     '⚠ Source is a GI/interim zone ({type}) — confirming may create negative stock if goods already left the warehouse.',
+  'chat.cancelWarning':     '⚠ This will cancel the transfer order and return it to open status.',
 
   // Chat — keyboard shortcuts overlay
   'shortcut.title':         'Keyboard Shortcuts',
@@ -428,10 +440,22 @@ const de: { [K in keyof typeof en]: string } = {
 
   // Chat — confirm dialog
   'chat.confirmTitle':      'Aktion bestätigen',
-  'chat.confirmOk':         'Bestätigen',
-  'chat.confirmAnyway':     'Trotzdem bestätigen',
+  'chat.confirmOk':         'Ausführen',
+  'chat.confirmAnyway':     'Trotzdem ausführen',
   'chat.cancel':            'Abbrechen',
+  'chat.actionConfirmTO':   'Transportauftrag bestätigen',
+  'chat.actionCreateTO':    'Transportauftrag erstellen',
+  'chat.actionCancelTO':    'Transportauftrag stornieren',
+  'chat.actionReplenish':   'Nachschub-TA erstellen',
+  'chat.actionCreateCount': 'Inventurbeleg erstellen',
+  'chat.actionGeneric':     'Aktion ausführen',
+  'chat.confirmDetail':     'Aktionsdetails',
+  'chat.metaMaterial':      'Material',
+  'chat.metaQty':           'Menge',
+  'chat.metaFrom':          'Von',
+  'chat.metaTo':            'Nach',
   'chat.giRiskWarning':     '⚠ Quelle ist eine WA-/Zwischenzone ({type}) — Bestätigen kann Negativbestand erzeugen, falls Waren das Lager bereits verlassen haben.',
+  'chat.cancelWarning':     '⚠ Dieser Vorgang storniert den Transportauftrag und setzt ihn zurück auf offen.',
 
   // Chat — keyboard shortcuts overlay
   'shortcut.title':         'Tastenkürzel',
