@@ -149,10 +149,12 @@ app.get('/api/conversations/:id', (req, res) => {
   res.json(conv);
 });
 
-app.patch('/api/conversations/:id', (req, res) => {
+app.put('/api/conversations/:id', (req, res) => {
   const conv = getConversation(req.params.id);
   if (!conv) return res.status(404).json({ error: 'Not found' });
-  res.json(saveConversation({ ...conv, ...req.body }));
+  const { title } = req.body;
+  if (title !== undefined && typeof title !== 'string') return res.status(400).json({ error: 'title must be a string' });
+  res.json(saveConversation({ ...conv, ...(title !== undefined && { title }) }));
 });
 
 app.delete('/api/conversations/:id', (req, res) => {

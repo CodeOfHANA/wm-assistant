@@ -2,11 +2,11 @@ import React from 'react';
 import { CheckCircle, XCircle, FileSpreadsheet } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MaterialTooltip } from './MaterialTooltip';
-import * as XLSX from 'xlsx';
 import { useToast } from './Toaster';
 import { useTranslation } from '../i18n';
 
 async function exportToXlsx(headers: string[], rows: (string | number | null | undefined)[][], filename: string): Promise<boolean> {
+  const XLSX = await import('xlsx');
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Data');
@@ -47,7 +47,7 @@ function ExcelBtn({ onClick }: { onClick: () => Promise<boolean> }) {
       className="flex items-center gap-1 text-[10px] text-wm-muted hover:text-emerald-600 transition-colors px-1.5 py-0.5 rounded hover:bg-wm-surface"
     >
       <FileSpreadsheet size={11} />
-      Excel
+      {t('tool.excel')}
     </button>
   );
 }

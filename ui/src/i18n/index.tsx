@@ -307,6 +307,7 @@ const en = {
   // ToolResultCard — misc labels
   'tool.today':                 'Today',
   'tool.exportExcel':           'Export to Excel',
+  'tool.excel':                 'Excel',
   'tool.clickCopy':             'Click to copy',
   'tool.truncated':             '⚠ Results truncated — refine your query or reduce the limit',
   'tool.grZone':                'GR zone:',
@@ -643,6 +644,7 @@ const de: { [K in keyof typeof en]: string } = {
   // ToolResultCard — misc labels
   'tool.today':                 'Heute',
   'tool.exportExcel':           'Nach Excel exportieren',
+  'tool.excel':                 'Excel',
   'tool.clickCopy':             'Klicken zum Kopieren',
   'tool.truncated':             '⚠ Ergebnisse abgeschnitten — Anfrage verfeinern oder Limit reduzieren',
   'tool.grZone':                'WE-Zone:',

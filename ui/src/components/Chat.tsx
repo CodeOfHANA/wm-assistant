@@ -467,6 +467,11 @@ export function Chat({
   const voiceSupported = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
+  // Stop recognition if the component unmounts mid-recording
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop(); };
+  }, []);
+
   const toggleVoice = () => {
     if (!voiceSupported) return;
     if (isRecording) {
