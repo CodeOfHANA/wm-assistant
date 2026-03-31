@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { streamChat, autoSelectModel, generateTitle } from './aiRouter.js';
+import { streamChat, autoSelectModel, generateTitle, extractMemoryFacts } from './aiRouter.js';
 import { getKey, setKey, removeKey, getProviderStatus, addCustomProvider, removeCustomProvider } from './providerStore.js';
 import { getMcpTools, callMcpTool } from './mcpClient.js';
 import {
@@ -263,6 +263,33 @@ app.post('/api/conversations/:id/generate-title', async (req, res) => {
     const title = words.slice(0, 7).join(' ');
     saveConversation({ ...conv, title });
     res.json({ title });
+  }
+});
+
+// ── Auto-memory extraction ────────────────────────────────────────────────────
+// Called after first assistant reply. AI reads the exchange and extracts facts.
+
+app.post('/api/conversations/:id/extract-memory', async (req, res) => {
+  const conv = getConversation(req.params.id);
+  if (!conv) return res.status(404).json({ error: 'not found' });
+
+  const messages = conv.messages ?? [];
+  if (messages.length < 2) return res.json({ facts: [] });
+
+  // Build a compact text representation of the conversation
+  const text = messages
+    .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+    .join('\n\n');
+
+  try {
+    const facts = await extractMemoryFacts(text);
+    const saved = [];
+    for (const fact of facts) {
+      if (fact.trim()) saved.push(addMemoryFact(fact.trim()));
+    }
+    res.json({ facts: saved });
+  } catch {
+    res.json({ facts: [] });
   }
 });
 

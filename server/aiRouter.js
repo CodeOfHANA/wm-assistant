@@ -533,3 +533,71 @@ export async function generateTitle(message) {
 
   throw new Error('No provider connected');
 }
+
+// ── Extract memorable facts from a conversation ────────────────────────────────
+// Returns up to 3 short fact strings, or [] if nothing notable.
+
+const EXTRACT_PROMPT = (conversation) =>
+  `You are a memory assistant. Read this SAP WM conversation and extract up to 3 short facts worth remembering for future sessions (e.g. warehouse-specific patterns, recurring issues, user preferences, material numbers that often cause problems). Return ONLY a JSON array of strings, max 3 items, each under 100 chars. If there is nothing worth remembering, return []. No explanation, just the JSON array.
+
+Conversation:
+${conversation}`;
+
+export async function extractMemoryFacts(conversationText) {
+  const connected = getConnectedIds();
+  const has = (id) => connected.includes(id);
+  const parse = (raw) => {
+    try {
+      const arr = JSON.parse(raw.trim());
+      return Array.isArray(arr) ? arr.filter(s => typeof s === 'string').slice(0, 3) : [];
+    } catch { return []; }
+  };
+
+  if (has('google')) {
+    try {
+      const genAI = new GoogleGenerativeAI(getKey('google'));
+      const result = await genAI
+        .getGenerativeModel({ model: 'gemini-2.0-flash' })
+        .generateContent(EXTRACT_PROMPT(conversationText));
+      return parse(result.response.text());
+    } catch (err) {
+      if (!isRateLimitError(err)) throw err;
+    }
+  }
+
+  if (has('anthropic')) {
+    const client = new Anthropic({ apiKey: getKey('anthropic') });
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 256,
+      messages: [{ role: 'user', content: EXTRACT_PROMPT(conversationText) }],
+    });
+    return parse(msg.content[0].text);
+  }
+
+  if (has('openai')) {
+    const client = new OpenAI({ apiKey: getKey('openai') });
+    const resp = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 256,
+      messages: [{ role: 'user', content: EXTRACT_PROMPT(conversationText) }],
+    });
+    return parse(resp.choices[0].message.content);
+  }
+
+  const customs = connected.filter((id) => id.startsWith('custom-'));
+  if (customs.length > 0) {
+    const cp = getCustomProvider(customs[0]);
+    if (cp) {
+      const client = new OpenAI({ apiKey: cp.key, baseURL: cp.baseUrl });
+      const resp = await client.chat.completions.create({
+        model: cp.model,
+        max_tokens: 256,
+        messages: [{ role: 'user', content: EXTRACT_PROMPT(conversationText) }],
+      });
+      return parse(resp.choices[0].message.content);
+    }
+  }
+
+  return [];
+}

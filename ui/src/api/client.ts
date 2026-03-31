@@ -97,6 +97,9 @@ export const renameConversation = (id: string, title: string) =>
 export const generateConversationTitle = (id: string, message: string) =>
   post<{ title: string }>(`/conversations/${id}/generate-title`, { message });
 
+export const extractConversationMemory = (id: string) =>
+  post<{ facts: { id: string; text: string }[] }>(`/conversations/${id}/extract-memory`, {});
+
 // ── Material stock summary ────────────────────────────────────────────────────
 
 export interface MaterialStock {

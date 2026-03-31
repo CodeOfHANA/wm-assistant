@@ -68,10 +68,15 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
   const [view, setView]                         = useState<'chat' | 'dashboard'>('chat');
   const [pendingQuery, setPendingQuery]         = useState('');
   const [showStats, setShowStats]               = useState(() => localStorage.getItem('wma_show_stats') !== 'false');
+  const [autoBrief, setAutoBrief]               = useState(() => localStorage.getItem('wma_auto_brief') === 'true');
 
   useEffect(() => {
     localStorage.setItem('wma_show_stats', String(showStats));
   }, [showStats]);
+
+  useEffect(() => {
+    localStorage.setItem('wma_auto_brief', String(autoBrief));
+  }, [autoBrief]);
 
   const refreshProviders = () => getProviders().then(setProviders).catch(() => {});
 
@@ -114,6 +119,9 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
         ...prev,
       ]);
       setActiveConv(conv);
+      if (autoBrief && statsWarehouse) {
+        setPendingQuery(`Give me a quick shift overview for warehouse ${statsWarehouse}`);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -346,6 +354,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
           open={settingsOpen}
           providers={providers}
           showStats={showStats}
+          autoBrief={autoBrief}
           language={language}
           onClose={() => setSettingsOpen(false)}
           onProvidersChange={refreshProviders}
@@ -353,6 +362,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
             setShowStats(v);
             if (v && statsWarehouse) refreshStats(statsWarehouse);
           }}
+          onAutoBriefChange={setAutoBrief}
           onLanguageChange={onLanguageChange}
         />
 

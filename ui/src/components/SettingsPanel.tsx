@@ -449,14 +449,16 @@ interface Props {
   open: boolean;
   providers: Provider[];
   showStats: boolean;
+  autoBrief: boolean;
   language: string;
   onClose: () => void;
   onProvidersChange: () => void;
   onShowStatsChange: (v: boolean) => void;
+  onAutoBriefChange: (v: boolean) => void;
   onLanguageChange: (lang: string) => void;
 }
 
-export function SettingsPanel({ open, providers, showStats, language, onClose, onProvidersChange, onShowStatsChange, onLanguageChange }: Props) {
+export function SettingsPanel({ open, providers, showStats, autoBrief, language, onClose, onProvidersChange, onShowStatsChange, onAutoBriefChange, onLanguageChange }: Props) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [project, setProject]           = useState<Project | null>(null);
@@ -701,6 +703,12 @@ export function SettingsPanel({ open, providers, showStats, language, onClose, o
                   onChange={onShowStatsChange}
                   label={t('settings.statsBar')}
                   description={t('settings.statsBarDesc')}
+                />
+                <Toggle
+                  checked={autoBrief}
+                  onChange={onAutoBriefChange}
+                  label={t('settings.autoBrief')}
+                  description={t('settings.autoBriefDesc')}
                 />
               </Section>
 

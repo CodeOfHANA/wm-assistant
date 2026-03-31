@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer } from 'lucide-react';
+import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain } from 'lucide-react';
 import { Relacottchen, WorkingRelacottchen } from './Relacottchen';
 import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm';
 import type { Message, ToolEvent, StreamEvent } from '../types';
 import { ToolResultCard } from './ToolResultCard';
 import type { ActionMeta } from './ToolResultCard';
-import { generateConversationTitle } from '../api/client';
+import { generateConversationTitle, addMemoryFact, extractConversationMemory } from '../api/client';
 import { useToast } from './Toaster';
 import { useTranslation } from '../i18n';
 
@@ -171,6 +171,7 @@ function MessageBubble({
   const { t } = useTranslation();
   const isUser = msg.role === 'user';
   const [copied, setCopied] = useState(false);
+  const [savedMem, setSavedMem] = useState(false);
   const timestamp = fmtTime(msg.createdAt);
 
   const handleCopy = () => {
@@ -226,15 +227,33 @@ function MessageBubble({
                     {msg.content || ' '}
                   </ReactMarkdown>
                 </div>
-                {/* Copy button — visible on hover, hidden while streaming and when printing */}
+                {/* Action buttons — visible on hover, hidden while streaming and when printing */}
                 {!isStreaming && msg.content && (
-                  <button
-                    onClick={handleCopy}
-                    title={copied ? t('chat.copied') : t('chat.copyResponse')}
-                    className="no-print absolute top-2 right-2 opacity-0 group-hover/bubble:opacity-100 transition-opacity p-1 rounded-md bg-wm-surface-2 border border-wm-border hover:border-wm-border-hover text-wm-muted hover:text-wm-text"
-                  >
-                    {copied ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
-                  </button>
+                  <div className="no-print absolute top-2 right-2 flex gap-1 opacity-0 group-hover/bubble:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        if (!msg.content || savedMem) return;
+                        addMemoryFact(msg.content)
+                          .then(() => {
+                            setSavedMem(true);
+                            toast(t('toast.memorySaved'));
+                            setTimeout(() => setSavedMem(false), 2000);
+                          })
+                          .catch(() => {});
+                      }}
+                      title={savedMem ? t('chat.memorySaved') : t('chat.saveMemory')}
+                      className="p-1 rounded-md bg-wm-surface-2 border border-wm-border hover:border-wm-border-hover text-wm-muted hover:text-wm-accent"
+                    >
+                      {savedMem ? <Check size={11} className="text-wm-accent" /> : <Brain size={11} />}
+                    </button>
+                    <button
+                      onClick={handleCopy}
+                      title={copied ? t('chat.copied') : t('chat.copyResponse')}
+                      className="p-1 rounded-md bg-wm-surface-2 border border-wm-border hover:border-wm-border-hover text-wm-muted hover:text-wm-text"
+                    >
+                      {copied ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                    </button>
+                  </div>
                 )}
               </>
             )}
@@ -606,10 +625,20 @@ export function Chat({
                 generateConversationTitle(conversationId, text)
                   .then(({ title }) => onTitleChange(title))
                   .catch(() => {
-                    // Fallback: word-boundary truncation
                     const words = text.trim().split(/\s+/);
                     onTitleChange(words.slice(0, 7).join(' '));
                   });
+
+                // Auto-memory extraction — only when tools were called (real WM data)
+                if (accTools.length > 0) {
+                  extractConversationMemory(conversationId)
+                    .then(({ facts }) => {
+                      if (facts.length > 0) {
+                        toast(t('toast.memoryExtracted', { n: String(facts.length), s: facts.length !== 1 ? 's' : '' }));
+                      }
+                    })
+                    .catch(() => {});
+                }
               }
               break;
           }

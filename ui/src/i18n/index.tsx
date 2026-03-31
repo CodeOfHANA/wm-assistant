@@ -98,6 +98,8 @@ const en = {
   'chat.exportTitle':       'Export conversation as Markdown',
   'chat.shortcutsTitle':    'Keyboard shortcuts (?)',
   'chat.export':            'Export',
+  'chat.saveMemory':        'Save to memory',
+  'chat.memorySaved':       'Saved!',
   'chat.copyResponse':      'Copy response',
   'chat.copied':            'Copied!',
   'chat.scrollToBottom':    'Scroll to bottom',
@@ -155,6 +157,8 @@ const en = {
   'settings.display':       'Display',
   'settings.statsBar':      'Stats bar',
   'settings.statsBarDesc':  'Show open TOs, negative stock and replenishment count below the header',
+  'settings.autoBrief':     'Auto shift briefing',
+  'settings.autoBriefDesc': 'Automatically send a shift overview when starting a new conversation (requires warehouse number in project instructions)',
   'settings.language':      'Language',
   'settings.languageDesc':  'Sets the language of the UI and the AI responses.',
   'settings.footer':        'WM Assistant · developed by RELACON IT Consulting · {n} provider{s} connected',
@@ -304,6 +308,8 @@ const en = {
 
   // Toast messages
   'toast.copied':           'Copied to clipboard',
+  'toast.memorySaved':      'Saved to memory',
+  'toast.memoryExtracted':  '{n} fact{s} saved to memory',
   'toast.exportedMd':       'Exported as Markdown',
   'toast.exportedXlsx':     'Exported to Excel',
   'toast.convDeleted':      'Conversation deleted',
@@ -413,6 +419,8 @@ const de: { [K in keyof typeof en]: string } = {
   'chat.exportTitle':       'Unterhaltung als Markdown exportieren',
   'chat.shortcutsTitle':    'Tastenkürzel (?)',
   'chat.export':            'Exportieren',
+  'chat.saveMemory':        'Im Gedächtnis speichern',
+  'chat.memorySaved':       'Gespeichert!',
   'chat.copyResponse':      'Antwort kopieren',
   'chat.copied':            'Kopiert!',
   'chat.scrollToBottom':    'Nach unten scrollen',
@@ -470,6 +478,8 @@ const de: { [K in keyof typeof en]: string } = {
   'settings.display':       'Anzeige',
   'settings.statsBar':      'Statistikleiste',
   'settings.statsBarDesc':  'Offene TAs, Negativbestand und Nachschubbedarf unterhalb der Kopfzeile anzeigen',
+  'settings.autoBrief':     'Automatische Schichtübersicht',
+  'settings.autoBriefDesc': 'Beim Start einer neuen Unterhaltung automatisch eine Schichtübersicht abrufen (erfordert Lagernummer in den Projekteinstellungen)',
   'settings.language':      'Sprache',
   'settings.languageDesc':  'Legt die Sprache der Benutzeroberfläche und KI-Antworten fest.',
   'settings.footer':        'WM Assistent · entwickelt von RELACON IT Consulting · {n} Anbieter verbunden',
@@ -619,6 +629,8 @@ const de: { [K in keyof typeof en]: string } = {
 
   // Toast messages
   'toast.copied':           'In Zwischenablage kopiert',
+  'toast.memorySaved':      'Im Gedächtnis gespeichert',
+  'toast.memoryExtracted':  '{n} Fakt{s} im Gedächtnis gespeichert',
   'toast.exportedMd':       'Als Markdown exportiert',
   'toast.exportedXlsx':     'Nach Excel exportiert',
   'toast.convDeleted':      'Unterhaltung gelöscht',
