@@ -24,6 +24,11 @@ const en = {
   'stats.negativeStock':    'Negative stock',
   'stats.replenishment':    'Replenishment',
 
+  // Proactive anomaly alerts
+  'stats.alertOpenTOs':     '⚠ Open TOs increased to {n}',
+  'stats.alertNegStock':    '🔴 Negative stock increased to {n}',
+  'stats.alertReplen':      '⚠ Replenishment needs increased to {n}',
+
   // Sidebar
   'sidebar.warehouseAi':    'Warehouse AI',
   'sidebar.expandSidebar':  'Expand sidebar',
@@ -360,6 +365,11 @@ const de: { [K in keyof typeof en]: string } = {
   'stats.openTOs':          'Offene TAs',
   'stats.negativeStock':    'Negativbestand',
   'stats.replenishment':    'Nachschub',
+
+  // Proactive anomaly alerts
+  'stats.alertOpenTOs':     '⚠ Offene TAs erhöht auf {n}',
+  'stats.alertNegStock':    '🔴 Negativbestand erhöht auf {n}',
+  'stats.alertReplen':      '⚠ Nachschubbedarf erhöht auf {n}',
 
   // Sidebar
   'sidebar.warehouseAi':    'Lager-KI',

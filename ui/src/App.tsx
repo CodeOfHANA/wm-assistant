@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import { ToastProvider, useToast } from './components/Toaster';
 import { I18nProvider, useTranslation } from './i18n';
@@ -78,6 +78,8 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
     localStorage.setItem('wma_auto_brief', String(autoBrief));
   }, [autoBrief]);
 
+  const prevStatsRef = useRef<ShiftStats | null>(null);
+
   const refreshProviders = () => getProviders().then(setProviders).catch(() => {});
 
   const refreshStats = (warehouse: string) =>
@@ -99,6 +101,27 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
     const id = setInterval(refreshProviders, 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Auto-poll stats every 2 minutes
+  useEffect(() => {
+    if (!statsWarehouse) return;
+    const id = setInterval(() => refreshStats(statsWarehouse), 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [statsWarehouse]);
+
+  // Proactive anomaly alerts — compare new stats against previous
+  useEffect(() => {
+    const prev = prevStatsRef.current;
+    if (stats && prev) {
+      if (stats.openTOs != null && prev.openTOs != null && stats.openTOs > prev.openTOs)
+        toast(t('stats.alertOpenTOs', { n: String(stats.openTOs) }), 'error');
+      if (stats.negativeQuants != null && prev.negativeQuants != null && stats.negativeQuants > prev.negativeQuants)
+        toast(t('stats.alertNegStock', { n: String(stats.negativeQuants) }), 'error');
+      if (stats.replenishmentNeeds != null && prev.replenishmentNeeds != null && stats.replenishmentNeeds > prev.replenishmentNeeds)
+        toast(t('stats.alertReplen', { n: String(stats.replenishmentNeeds) }), 'error');
+    }
+    prevStatsRef.current = stats;
+  }, [stats]);
 
   const handleSelectConversation = async (id: string) => {
     setView('chat');
