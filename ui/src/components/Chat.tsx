@@ -769,7 +769,12 @@ export function Chat({
         const modelNote = modelUsed ? ` _(${modelUsed.provider} · ${modelUsed.model})_` : '';
         lines.push(`## Assistant${modelNote}\n`);
         if (toolEvents && toolEvents.length > 0) {
-          toolEvents.forEach(t => lines.push(`> 🔧 \`${t.name}\`\n`));
+          toolEvents.forEach(t => {
+            lines.push(`> 🔧 \`${t.name}\`\n`);
+            if (t.result) {
+              lines.push(`\`\`\`json\n${JSON.stringify(t.result, null, 2)}\n\`\`\`\n`);
+            }
+          });
         }
         if (msg.content) lines.push(`\n${msg.content}\n`);
       }
@@ -1299,6 +1304,7 @@ export function Chat({
                 {
                   group: t('shortcut.group.general'),
                   items: [
+                    { keys: ['d'], desc: t('shortcut.dashboard') },
                     { keys: ['?'], desc: t('shortcut.toggleCheat') },
                     { keys: ['Esc'], desc: t('shortcut.closeOverlay') },
                   ],

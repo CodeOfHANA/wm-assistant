@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Check, ExternalLink, Eye, EyeOff,
   Trash2, Plus, ChevronDown, ChevronUp,
-  Brain, BookOpen, Plug, BarChart2, Languages,
+  Brain, BookOpen, Plug, BarChart2, Languages, RotateCcw,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
@@ -458,6 +458,25 @@ interface Props {
   onLanguageChange: (lang: string) => void;
 }
 
+const DEFAULT_INSTRUCTIONS = `## My SAP system
+Warehouse number:
+Plant:
+Storage location (LGORT, for WM/IM variance):
+
+## Storage types in use
+<!-- List your storage types and what they represent, e.g.:
+001 — Fixed bin (blocks negative stock — avoid as source/dest for ad-hoc moves)
+003 — Fixed bin (allows negative stock — safe for test moves)
+P01 — Picking zone (primary replenishment target)
+999 — Storage unit zone (negative quants here are expected)
+-->
+
+## Operational notes
+<!-- Any site-specific rules, e.g.:
+- Negative stock in SU/interim zones is expected (GI posted before TO confirmed)
+- Open TOs older than X days should be flagged
+-->`;
+
 export function SettingsPanel({ open, providers, showStats, autoBrief, language, onClose, onProvidersChange, onShowStatsChange, onAutoBriefChange, onLanguageChange }: Props) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -623,12 +642,22 @@ export function SettingsPanel({ open, providers, showStats, autoBrief, language,
                         exit={{ opacity: 0 }}
                         className="absolute bottom-3 right-3 flex items-center gap-1 text-[10px] text-emerald-600"
                       >
-                        <Check size={10} /> Saved
+                        <Check size={10} /> {t('settings.saved')}
                       </motion.span>
                     )}
                   </AnimatePresence>
                 </div>
-                <p className="text-[10px] text-wm-muted">{t('settings.autoSaved', { n: instructions.length })}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-wm-muted">{t('settings.autoSaved', { n: instructions.length })}</p>
+                  <button
+                    onClick={() => handleInstructionsChange(DEFAULT_INSTRUCTIONS)}
+                    className="flex items-center gap-1 text-[10px] text-wm-muted hover:text-wm-accent transition-colors"
+                    title={t('settings.resetDefaults')}
+                  >
+                    <RotateCcw size={10} />
+                    {t('settings.resetDefaults')}
+                  </button>
+                </div>
               </Section>
 
               {/* ── Memory ── */}
@@ -656,7 +685,14 @@ export function SettingsPanel({ open, providers, showStats, autoBrief, language,
                         transition={{ duration: 0.2 }}
                         className="flex items-start gap-2 px-3 py-2 rounded-lg bg-wm-surface-2 border border-wm-border group"
                       >
-                        <p className="flex-1 text-xs text-wm-text-dim leading-relaxed">{fact.text}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-wm-text-dim leading-relaxed">{fact.text}</p>
+                          {fact.createdAt && (
+                            <p className="text-[10px] text-wm-border-hover mt-0.5">
+                              {new Date(fact.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleDeleteFact(fact.id)}
                           className="text-wm-border group-hover:text-red-600 transition-colors flex-shrink-0 mt-0.5"

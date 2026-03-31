@@ -143,6 +143,7 @@ const en = {
   'shortcut.newLine':       'New line',
   'shortcut.toggleCheat':   'Toggle this cheatsheet',
   'shortcut.closeOverlay':  'Close overlays / cancel edit',
+  'shortcut.dashboard':     'Toggle Dashboard view',
 
   // Settings
   'settings.title':         'Settings',
@@ -170,6 +171,7 @@ const en = {
   'settings.instructions':  'Project Instructions',
   'settings.instructionsDesc': 'These instructions are injected as the system prompt for every conversation. Think of it as the "Instructions" field in a Claude Desktop project.',
   'settings.autoSaved':     'Auto-saved · {n} chars',
+  'settings.resetDefaults': 'Reset to defaults',
   'settings.memory':        'Memory',
   'settings.memoryDesc':    'Facts remembered across all conversations. Injected below project instructions. Add things the AI should always know — warehouse numbers, materials, naming conventions.',
   'settings.noFacts':       'No memory facts yet.',
@@ -485,6 +487,7 @@ const de: { [K in keyof typeof en]: string } = {
   'shortcut.newLine':       'Neue Zeile',
   'shortcut.toggleCheat':   'Diese Kurzübersicht umschalten',
   'shortcut.closeOverlay':  'Überlagerungen schließen / Bearbeitung abbrechen',
+  'shortcut.dashboard':     'Dashboard-Ansicht umschalten',
 
   // Settings
   'settings.title':         'Einstellungen',
@@ -512,6 +515,7 @@ const de: { [K in keyof typeof en]: string } = {
   'settings.instructions':  'Projektanweisungen',
   'settings.instructionsDesc': 'Diese Anweisungen werden als Systemanweisung für jede Unterhaltung eingefügt. Entspricht dem „Anweisungen"-Feld in einem Claude Desktop-Projekt.',
   'settings.autoSaved':     'Automatisch gespeichert · {n} Zeichen',
+  'settings.resetDefaults': 'Auf Standard zurücksetzen',
   'settings.memory':        'Gedächtnis',
   'settings.memoryDesc':    'Über alle Unterhaltungen gespeicherte Fakten. Lagernummern, Materialien, Namenskonventionen usw.',
   'settings.noFacts':       'Noch keine Gedächtniseinträge.',

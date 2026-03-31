@@ -102,6 +102,18 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
     return () => clearInterval(id);
   }, []);
 
+  // Global keyboard shortcut: d → toggle Dashboard
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (e.key === 'd' && tag !== 'INPUT' && tag !== 'TEXTAREA' && !e.ctrlKey && !e.metaKey) {
+        if (statsWarehouse) setView(v => v === 'dashboard' ? 'chat' : 'dashboard');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [statsWarehouse]);
+
   // Auto-poll stats every 2 minutes
   useEffect(() => {
     if (!statsWarehouse) return;
