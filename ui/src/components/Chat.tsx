@@ -291,9 +291,16 @@ export function Chat({
               setStreamingText('');
               setStreamingTools([]);
 
-              // Auto-title first message
-              if (onTitleChange && chatMessages.length === 0) {
-                onTitleChange(text.slice(0, 60));
+              // AI-generated title after first exchange
+              if (conversationId && chatMessages.length === 0 && onTitleChange) {
+                const { generateConversationTitle } = await import('../api/client');
+                generateConversationTitle(conversationId, text)
+                  .then(({ title }) => onTitleChange(title))
+                  .catch(() => {
+                    // Fallback: word-boundary truncation
+                    const words = text.trim().split(/\s+/);
+                    onTitleChange(words.slice(0, 7).join(' '));
+                  });
               }
               break;
           }

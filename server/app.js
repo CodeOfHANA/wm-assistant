@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { streamChat, autoSelectModel } from './aiRouter.js';
+import { streamChat, autoSelectModel, generateTitle } from './aiRouter.js';
 import { getKey, setKey, removeKey, getProviderStatus, addCustomProvider, removeCustomProvider } from './providerStore.js';
 import { getMcpTools } from './mcpClient.js';
 import {
@@ -229,6 +229,29 @@ app.post('/api/chat', async (req, res) => {
       ? message.trim().slice(0, 60)
       : conv.title;
     saveConversation({ ...conv, title, messages: updatedMessages });
+  }
+});
+
+// ── Conversation title generation ─────────────────────────────────────────────
+
+app.post('/api/conversations/:id/generate-title', async (req, res) => {
+  const { id } = req.params;
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'message required' });
+
+  const conv = getConversation(id);
+  if (!conv) return res.status(404).json({ error: 'not found' });
+
+  try {
+    const title = await generateTitle(message.trim());
+    saveConversation({ ...conv, title });
+    res.json({ title });
+  } catch {
+    // Fallback: word-boundary truncation
+    const words = message.trim().split(/\s+/);
+    const title = words.slice(0, 7).join(' ');
+    saveConversation({ ...conv, title });
+    res.json({ title });
   }
 });
 

@@ -91,6 +91,9 @@ export const getConversation = (id: string) =>
 export const deleteConversation = (id: string) =>
   del(`/conversations/${id}`);
 
+export const generateConversationTitle = (id: string, message: string) =>
+  post<{ title: string }>(`/conversations/${id}/generate-title`, { message });
+
 // ── Auto-select preview ───────────────────────────────────────────────────────
 
 export const getAutoSelect = (message: string) =>

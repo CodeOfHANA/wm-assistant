@@ -391,3 +391,59 @@ export async function streamChat({ provider, model, messages, systemPrompt }, re
     res.end();
   }
 }
+
+// ── Title generation (non-streaming, fast model) ───────────────────────────────
+
+const TITLE_PROMPT = (msg) =>
+  `Generate a concise 3-6 word title for a warehouse management conversation that begins with this message. Reply with only the title — no quotes, no trailing punctuation.\n\nMessage: ${msg.slice(0, 300)}`;
+
+export async function generateTitle(message) {
+  const connected = getConnectedIds();
+  const has = (id) => connected.includes(id);
+  const clean = (s) => s.trim().replace(/^["']|["']$/g, '').replace(/[.!?]+$/, '').trim();
+
+  if (has('google')) {
+    const genAI = new GoogleGenerativeAI(getKey('google'));
+    const result = await genAI
+      .getGenerativeModel({ model: 'gemini-2.0-flash' })
+      .generateContent(TITLE_PROMPT(message));
+    return clean(result.response.text());
+  }
+
+  if (has('anthropic')) {
+    const client = new Anthropic({ apiKey: getKey('anthropic') });
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 24,
+      messages: [{ role: 'user', content: TITLE_PROMPT(message) }],
+    });
+    return clean(msg.content[0].text);
+  }
+
+  if (has('openai')) {
+    const client = new OpenAI({ apiKey: getKey('openai') });
+    const resp = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 24,
+      messages: [{ role: 'user', content: TITLE_PROMPT(message) }],
+    });
+    return clean(resp.choices[0].message.content);
+  }
+
+  // Custom provider fallback
+  const customs = connected.filter((id) => id.startsWith('custom-'));
+  if (customs.length > 0) {
+    const cp = getCustomProvider(customs[0]);
+    if (cp) {
+      const client = new OpenAI({ apiKey: cp.key, baseURL: cp.baseUrl });
+      const resp = await client.chat.completions.create({
+        model: cp.model,
+        max_tokens: 24,
+        messages: [{ role: 'user', content: TITLE_PROMPT(message) }],
+      });
+      return clean(resp.choices[0].message.content);
+    }
+  }
+
+  throw new Error('No provider connected');
+}
