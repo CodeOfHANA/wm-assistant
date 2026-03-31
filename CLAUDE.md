@@ -4,38 +4,38 @@
 - **Name:** Noman Mohamed Hanif
 - **Role:** Senior SAP Technology Consultant @ RELACON IT Consulting GmbH, Hamburg
 - **GitHub:** CodeOfHANA
+- **Repo:** https://github.com/CodeOfHANA/wm-assistant.git
 
 ---
 
 ## What This Project Is
 
 **`wm-assistant`** is a browser-based AI chat UI for SAP Classic Warehouse Management.
-It wraps the MCP server at `../sap-wm-mcp` as an MCP client, exposes a streaming HTTP API,
-and provides a Claude Desktop-style project experience (instructions, memory, conversation history)
-accessible to any warehouse staff via a browser — no Claude Desktop, no technical setup.
+It wraps `../sap-wm-mcp` (23 WM tools via MCP) as a client, streams responses from Claude / GPT-4o / Gemini,
+and gives warehouse staff a Claude Desktop-style experience (project instructions, memory, conversation history) at a browser URL.
 
-**Commercial angle:** RELACON-hosted SaaS product. Warehouse managers open a URL, pick a model, chat with their WM data.
+**Commercial angle:** RELACON-hosted SaaS — warehouse managers open a URL, connect their AI key (or RELACON holds it), and chat with their live WM data.
 
-**Companion project:** `../sap-wm-mcp` — the MCP server with 24 WM tools. This project is the UI layer on top of it.
+**Companion project:** `../sap-wm-mcp` — the MCP server with all WM tools. This project is purely the UI layer.
 
 ---
 
 ## Architecture
 
 ```
-Browser (React UI — localhost:5173 dev)
-    ↓ HTTP/SSE
+Browser (React — localhost:5173 in dev)
+    ↓ HTTP + SSE
 server/app.js (Express — localhost:3001)
-    ├── server/aiRouter.js      ← streams Claude / GPT-4o / Gemini
-    ├── server/mcpClient.js     ← MCP client → spawns ../sap-wm-mcp/index.js via stdio
-    ├── server/providerStore.js ← stores API keys server-side (data/providers.json)
-    └── server/store/           ← JSON file storage (local) / Supabase (Phase 2)
+    ├── server/aiRouter.js      ← agentic streaming loop: Claude / OpenAI / Gemini / custom
+    ├── server/mcpClient.js     ← MCP stdio client → spawns ../sap-wm-mcp/index.js as subprocess
+    ├── server/providerStore.js ← API key management (data/providers.json, gitignored)
+    └── server/store/
             ├── index.js        ← storage interface (swap via STORAGE_BACKEND env)
-            └── localStore.js   ← project, memory, conversations as JSON files
+            └── localStore.js   ← project, memory, conversations as JSON files in data/
 ```
 
-**Key principle:** Tools are NOT imported directly. `mcpClient.js` connects to `sap-wm-mcp/index.js`
-via MCP stdio protocol. This keeps `sap-wm-mcp` clean and reusable (Claude Desktop still works unchanged).
+**Key principle:** MCP tools are never imported directly — `mcpClient.js` uses the stdio MCP protocol.
+This keeps `sap-wm-mcp` independent (Claude Code and Claude Desktop still work on it unchanged).
 
 ---
 
@@ -43,93 +43,127 @@ via MCP stdio protocol. This keeps `sap-wm-mcp` clean and reusable (Claude Deskt
 
 | Path | Purpose |
 |---|---|
-| `../sap-wm-mcp` | MCP server — 24 WM tools, RAP OData V4 service, ABAP objects |
-| `../sap-ewm-mcp` | EWM MCP server (standard SAP APIs) — comparison demo target |
-| `../Claude Code CLI/UI_UX` | UI/UX design reference — motion patterns, component library |
+| `../sap-wm-mcp` | MCP server — 23 WM tools over custom RAP OData V4 |
+| `../sap-ewm-mcp` | EWM MCP server (standard SAP APIs) — parallel comparison demo |
 
 ---
 
-## Design System
+## Tech Stack
 
-### RELACON Brand Colors (from www.relacon.de)
+| Layer | Tech |
+|---|---|
+| Frontend | React 18 + TypeScript, Vite 5 |
+| Styling | Tailwind CSS **v3** (NOT v4) + custom RELACON tokens |
+| Animation | Framer Motion v11 |
+| Icons | lucide-react |
+| Backend | Node.js ESM, Express |
+| AI SDKs | `@anthropic-ai/sdk`, `openai`, `@google/generative-ai` |
+| MCP | `@modelcontextprotocol/sdk` |
+| Storage | Local JSON files in `data/` (Supabase-ready abstraction) |
+
+> **Tailwind is v3** — uses `tailwind.config.js` + `postcss.config.js`, NOT the v4 Vite plugin.
+> `@tailwindcss/vite` is not installed. Do not add it.
+
+---
+
+## RELACON Design Tokens
+
+Defined in `ui/tailwind.config.js`:
+
 | Token | Hex | Usage |
 |---|---|---|
-| Primary teal | `#015c61` | Buttons, active states, accents |
-| Secondary blue | `#2ea3f2` | Links, highlights, streaming cursor |
-| Medium blue | `#15779b` | Secondary actions |
-| Dark teal | `#004e54` | Hover states |
-| Light teal | `#82c0c7` | Muted text, labels |
-| Background | `#0a1214` | Page background (dark teal-black) |
-| Surface | `#0f1f22` | Cards, sidebar, panels |
-| Border | `#1a3339` | Dividers, card borders |
-| Text primary | `#f0f9fa` | Headlines |
-| Text muted | `#82c0c7` | Body, descriptions |
+| `wm-bg` | `#0a1214` | Page background |
+| `wm-surface` | `#0f1f22` | Cards, panels |
+| `wm-surface-2` | `#152a2e` | Hover states, table rows |
+| `wm-border` | `#1a3339` | Borders, dividers |
+| `wm-border-hover` | `#2a4a52` | Focus borders |
+| `wm-primary` | `#015c61` | Buttons, active states |
+| `wm-primary-hover` | `#004e54` | Button hover |
+| `wm-accent` | `#2ea3f2` | Links, streaming cursor |
+| `wm-accent-mid` | `#15779b` | Secondary accents |
+| `wm-muted` | `#82c0c7` | Muted text, labels |
+| `wm-text` | `#f0f9fa` | Primary text |
+| `wm-text-dim` | `#a8d4d8` | Secondary text |
 
-### Animation System (from `../Claude Code CLI/UI_UX`)
-- **Easing:** `[0.21, 0.47, 0.32, 0.98]` for entry animations
-- **Button spring:** `{ type: "spring", stiffness: 400, damping: 25 }`
-- **Card spring:** `{ type: "spring", stiffness: 260, damping: 20 }`
-- **Stagger:** `staggerChildren: 0.12, delayChildren: 0.1`
-- **Scroll reveal:** `viewport={{ once: true, margin: "-80px" }}`
-- **Always wrap app in** `<MotionConfig reducedMotion="user">`
-- Animate only `transform` and `opacity` — GPU-composited only
-
-### Stack
-- React 18 + TypeScript
-- Vite (dev server)
-- Tailwind CSS v4
-- shadcn/ui
-- Framer Motion v11+
-- Inter font (Google Fonts)
+Animation constants:
+- Entry easing: `[0.21, 0.47, 0.32, 0.98]`
+- Button spring: `{ type: 'spring', stiffness: 400, damping: 25 }`
+- Panel spring: `{ type: 'spring', stiffness: 320, damping: 32 }`
+- Always wrap in `<MotionConfig reducedMotion="user">`
 
 ---
 
-## Project Structure (target state)
+## Project Structure (current state)
 
 ```
 wm-assistant/
 ├── CLAUDE.md
 ├── package.json
-├── .env                        ← gitignored (copy from .env.example)
+├── .env                        ← gitignored — copy from .env.example and fill in
 ├── .env.example
 ├── .gitignore
 │
-├── server/                     ← Day 1 COMPLETE ✅
-│   ├── app.js                  ← Express: all routes + SSE /api/chat
-│   ├── aiRouter.js             ← streaming: Claude + OpenAI + Gemini + auto-select
-│   ├── mcpClient.js            ← MCP client singleton
-│   ├── providerStore.js        ← API key management
+├── server/
+│   ├── app.js                  ← Express routes + BASE_SYSTEM_PROMPT constant
+│   ├── aiRouter.js             ← streamChat() + generateTitle() (non-streaming)
+│   ├── mcpClient.js            ← MCP client singleton (lazy connect on first call)
+│   ├── providerStore.js        ← builtin + custom provider management
 │   └── store/
-│       ├── index.js            ← storage interface
-│       └── localStore.js       ← JSON file backend
+│       ├── index.js            ← re-exports localStore (swap to supabase via env)
+│       └── localStore.js       ← JSON file backend, DEFAULT_INSTRUCTIONS template
 │
-├── ui/                         ← Days 2–5 (not yet built)
+├── ui/
 │   ├── index.html
-│   ├── vite.config.ts
-│   ├── tailwind.config.ts
+│   ├── vite.config.ts          ← proxy: /api → localhost:3001
+│   ├── tailwind.config.js      ← wm-* color tokens
+│   ├── postcss.config.js
 │   ├── package.json
 │   └── src/
 │       ├── main.tsx
-│       ├── App.tsx
+│       ├── App.tsx             ← root: sidebar + chat + settings, provider polling
+│       ├── index.css           ← Tailwind directives + streaming-cursor animation
+│       ├── types.ts            ← Message, ToolEvent, StreamEvent, Provider, etc.
 │       ├── api/
-│       │   └── client.ts           ← typed fetch wrappers for all /api/* routes
+│       │   └── client.ts       ← typed fetch wrappers for all /api/* routes
 │       └── components/
-│           ├── Sidebar.tsx             ← Day 2: conversation list + provider status dots
-│           ├── Chat.tsx                ← Day 2: streaming message thread
-│           ├── ModelSelector.tsx       ← Day 2: provider/model dropdown
-│           ├── ProviderModal.tsx       ← Day 3: "Connect" API key flow
-│           ├── AutoSelectBadge.tsx     ← Day 3: shows which model auto-selected + why
-│           ├── ProjectInstructions.tsx ← Day 5: editable system prompt panel
-│           ├── MemoryPanel.tsx         ← Day 5: persistent facts sidebar
-│           └── ToolResultCard.tsx      ← Day 4: structured WM data rendering (TOs as tables, bins as cards)
+│           ├── Sidebar.tsx         ← collapsible (64/256px spring), logo always visible
+│           ├── Chat.tsx            ← streaming thread, tool cards, suggestion chips
+│           ├── ModelSelector.tsx   ← provider/model dropdown, tier icons
+│           ├── SettingsPanel.tsx   ← slide-in: provider connect, custom providers,
+│           │                          project instructions, memory panel
+│           └── ToolResultCard.tsx  ← structured WM data rendering (shape-based dispatch)
 │
-└── data/                       ← gitignored, created at runtime
-    ├── project.json
-    ├── memory.json
-    ├── providers.json          ← encrypted API keys (server-side only)
-    └── conversations/
-        └── {id}.json
+├── data/                       ← gitignored, created at runtime by localStore.js
+│   ├── project.json
+│   ├── memory.json
+│   ├── providers.json
+│   └── conversations/
+│
+└── .claude/
+    └── skills/
+        ├── wma-add-component.md
+        └── wma-doc-sync.md
 ```
+
+---
+
+## Running Locally
+
+**Prerequisites:** `sap-wm-mcp/.env` must have valid SAP credentials.
+
+```bash
+# 1 — Create wm-assistant/.env (once)
+cp .env.example .env
+# Fill in: ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_API_KEY (at least one)
+
+# 2 — Start API server (auto-spawns sap-wm-mcp as MCP subprocess)
+node server/app.js          # → http://localhost:3001
+
+# 3 — Start React dev server (separate terminal)
+cd ui && npm run dev        # → http://localhost:5173
+```
+
+Open http://localhost:5173 — go to Settings, paste an API key, ask a warehouse question.
 
 ---
 
@@ -138,158 +172,155 @@ wm-assistant/
 | Method | Route | Purpose |
 |---|---|---|
 | GET | `/api/health` | Health check |
-| GET | `/api/tools` | List 24 MCP tools (name + description) |
-| GET | `/api/providers` | Provider list + connected status (no keys) |
+| GET | `/api/tools` | List MCP tools (name + description) |
+| GET | `/api/providers` | Provider list + connected status |
 | POST | `/api/providers/:id/connect` | Store API key `{ apiKey }` |
-| DELETE | `/api/providers/:id` | Disconnect provider |
-| GET | `/api/project` | Get project name + instructions |
-| PUT | `/api/project` | Update `{ name?, instructions? }` |
+| DELETE | `/api/providers/:id` | Disconnect built-in provider |
+| POST | `/api/providers/custom` | Add custom OpenAI-compatible provider |
+| DELETE | `/api/providers/custom/:id` | Remove custom provider |
+| GET | `/api/project` | Get `{ name, instructions }` |
+| PUT | `/api/project` | Update project |
 | GET | `/api/memory` | Get memory facts |
 | POST | `/api/memory` | Add fact `{ text }` |
 | DELETE | `/api/memory/:id` | Delete fact |
 | GET | `/api/conversations` | List conversation index |
 | POST | `/api/conversations` | Create `{ title? }` |
-| GET | `/api/conversations/:id` | Get full conversation with messages |
-| PATCH | `/api/conversations/:id` | Update title/messages |
+| GET | `/api/conversations/:id` | Full conversation with messages |
 | DELETE | `/api/conversations/:id` | Delete |
 | **POST** | **`/api/chat`** | **Streaming SSE chat** |
-| POST | `/api/auto-select` | Preview which model will be auto-selected |
+| POST | `/api/conversations/:id/generate-title` | AI-generate title from `{ message }` |
+| POST | `/api/auto-select` | Preview auto-model selection |
 
-### SSE Chat Protocol (`POST /api/chat`)
+### SSE Chat Protocol
 
-**Request body:**
-```json
-{
-  "conversationId": "uuid (optional — if provided, history is loaded and saved)",
-  "message": "Show me all open transfer orders",
-  "provider": "auto | anthropic | openai | google",
-  "model": "claude-sonnet-4-6 (optional)"
-}
-```
+**Request:** `{ conversationId?, message, provider?, model? }`
 
-**SSE event stream:**
+**Event stream:**
 ```
 data: {"type":"model_used","provider":"anthropic","model":"claude-sonnet-4-6"}
-data: {"type":"text","delta":"Here are the open transfer orders:"}
+data: {"type":"text","delta":"Here are the open TOs:"}
 data: {"type":"tool_start","name":"get_open_transfer_orders","id":"toolu_01","input":{...}}
-data: {"type":"tool_result","name":"get_open_transfer_orders","id":"toolu_01","result":{...}}
-data: {"type":"text","delta":" I found 3 open TOs..."}
-data: {"type":"done","usage":{"input_tokens":1240,"output_tokens":87}}
+data: {"type":"tool_result","id":"toolu_01","result":{...}}
+data: {"type":"done"}
 ```
 
 ---
 
-## Dev Commands
+## System Prompt Architecture
 
-```bash
-# Backend (from wm-assistant/)
-node server/app.js          → http://localhost:3001
+Two layers, assembled in `server/app.js`:
 
-# Frontend (from wm-assistant/ui/ — once scaffolded Day 2)
-npm run dev                 → http://localhost:5173
+```
+BASE_SYSTEM_PROMPT  (hardcoded constant in app.js — always sent, not user-editable)
+  → Role definition, full tool catalog by category, behaviour rules
+  → "Ask the user for warehouse/plant if not in config below"
 
-# Test backend health
-curl http://localhost:3001/api/health
-curl http://localhost:3001/api/tools
-curl http://localhost:3001/api/providers
+## Your configuration  (project.instructions from Settings — user-editable)
+  → Fill-in template: warehouse number, plant, storage types, notes
+  → Default template ships in localStore.js DEFAULT_INSTRUCTIONS
+
+## Memory  (memory facts added via memory panel)
+  → Persisted facts from previous sessions
 ```
 
 ---
 
-## .env Variables
+## Provider System
 
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-GOOGLE_API_KEY=AIza...
-MCP_SERVER_PATH=../sap-wm-mcp/index.js   # relative to project root
-PORT=3001
-STORAGE_BACKEND=local
-```
+**Built-in providers:** `anthropic`, `openai`, `google` — connect by pasting API key in Settings.
+**Custom providers:** any OpenAI-compatible endpoint (Mistral, Groq, Ollama, DeepSeek, etc.).
+- Quick-fill presets in the UI for popular ones
+- Stored as `{ id: 'custom-{uuid}', name, baseUrl, model, key }` in `data/providers.json`
 
-API keys in `.env` take priority over keys stored via `/api/providers/:id/connect`.
-For demo: put keys in `.env`. For production SaaS: use the connect flow (RELACON holds the keys).
+**Auto-model routing** (when `provider: 'auto'`):
 
----
-
-## Auto-Model Selection Logic
-
-When `provider: "auto"` (default), the last user message is matched against these rules (first match wins):
-
-| Pattern | Model chosen | Reason |
-|---|---|---|
-| `analys\|trend\|compar\|varianc\|aging\|anomal` | Claude Sonnet / GPT-4o | Complex reasoning |
-| `create\|confirm\|cancel\|move stock` | Claude Haiku / GPT-4o mini | Write ops — reliable, cheap |
-| `show\|list\|get\|how many\|find` | Gemini Flash / GPT-4o mini | Simple lookups — cheapest |
-| (default) | Haiku → GPT-4o mini → Gemini Flash | Best available |
+| Message pattern | Model |
+|---|---|
+| analys / trend / varianc / anomal / aging | Claude Sonnet → GPT-4o → Gemini Pro |
+| create / confirm / cancel / transfer order | Claude Haiku → GPT-4o mini → Gemini Flash |
+| show / list / get / find / where | Gemini Flash → GPT-4o mini → Claude Haiku |
+| fallback | Claude Haiku → GPT-4o mini → Gemini Flash |
 
 ---
 
-## Current Progress
+## ToolResultCard — Shape-Based Dispatch
 
-### Day 1 — Server Layer ✅ COMPLETE
-- `server/app.js` — all routes
-- `server/aiRouter.js` — streaming agentic loop (Claude + OpenAI + Gemini)
-- `server/mcpClient.js` — MCP client singleton
-- `server/providerStore.js` — API key management
-- `server/store/` — local JSON storage
+`ui/src/components/ToolResultCard.tsx` renders tool results as structured UI instead of raw JSON.
+Dispatch is **shape-based** (checks result object keys), not tool-name-based — more robust:
 
-**Verified:** Server starts, MCP connects, 24 tools loaded.
-
-### Day 2 — React UI Shell 🔜 NEXT
-- `ui/` Vite + React + TypeScript + shadcn/ui + Framer Motion
-- Sidebar: conversation list, new chat button, provider status dots
-- Header: model selector + auto-select toggle
-- Chat: streaming message thread with RELACON design theme
-
-### Day 3 — Provider Modals + Auto-Select
-- `ProviderModal.tsx` — "Connect" API key flow per provider
-- `AutoSelectBadge.tsx` — shows which model was chosen + why
-- Model selector with connected/disconnected states
-
-### Day 4 — Tool Result Cards
-- `ToolResultCard.tsx` — TOs as tables, bins as cards, stock as lists
-- Tool call progress indicator (expanding panel while executing)
-- Collapsible tool result sections
-
-### Day 5 — Project Instructions + Memory + Polish
-- `ProjectInstructions.tsx` — editable system prompt (like Claude Desktop "Instructions")
-- `MemoryPanel.tsx` — persistent facts, add/delete
-- Full RELACON animation polish (Framer Motion stagger, spring buttons)
-- Conversation auto-title + rename
+| Result has key | Renderer |
+|---|---|
+| `success` | ActionResult (green ✓ / red ✗) |
+| `orders[]` | TransferOrderTable |
+| `anomalies[]` | AnomalyList (severity badges) |
+| `negativeQuants[]` | NegativeStockTable |
+| `candidates[]` | CycleCountTable |
+| `variances[]` | VarianceTable |
+| `bins[]` with `replenishmentQty` | ReplenishmentTable |
+| `bins[]` without `replenishmentQty` | BinTable |
+| `stock[]` with `ageBand` | AgingTable |
+| `stock[]` without `ageBand` | StockTable |
+| `byStorageType[]` (array) | UtilizationPanel (stat cards + progress bars) |
+| first array found | GenericTable |
+| fallback | formatted JSON |
 
 ---
 
-## Key Design Decisions
+## Conversation Auto-Title
 
-1. **MCP client, not direct import** — `server/mcpClient.js` spawns `sap-wm-mcp/index.js` as a subprocess via stdio. Tools are never imported directly into this repo. This keeps `sap-wm-mcp` clean and allows connecting to `sap-ewm-mcp` later (comparison demo).
-
-2. **Storage abstraction** — `server/store/index.js` selects backend via `STORAGE_BACKEND` env. Local JSON for demo, swap to Supabase for Phase 2 with one env var change.
-
-3. **API keys server-side only** — keys stored in `data/providers.json` (gitignored). Browser never sees keys — it only sees `{ connected: true/false }`.
-
-4. **SSE not WebSocket** — simpler, browser-native, no connection management. Works through proxies and load balancers (important for BTP CF Phase 2).
-
-5. **Conversation persistence after stream** — `app.js` intercepts SSE writes to capture assistant text, then saves to store after `res.end()`. No partial saves.
-
-6. **No BTP for demo** — Phase 2 (BTP CF) is a deployment target, not a prerequisite. Local MCP + local server is fully functional for demos.
+After first exchange completes:
+1. Client calls `POST /api/conversations/:id/generate-title` with the first user message
+2. Server calls fastest available model (Gemini Flash → Claude Haiku → GPT-4o-mini), `max_tokens: 24`
+3. Prompt: *"Generate a concise 3-6 word title… reply with only the title"*
+4. Server persists title, returns `{ title }`
+5. Client updates sidebar via `onTitleChange`
+6. Fallback (no provider / error): first 7 words of user message
 
 ---
 
-## Phase 2 Path (after UI is complete)
+## Sidebar Collapse Behaviour
 
-`docs/phase2-implementation-plan.md` in `../sap-wm-mcp` has the full BTP CF plan.
-Phase 2A adds:
-- `server/auth.js` — XSUAA JWT validation
-- HTTP transport to MCP server (instead of stdio subprocess)
-- `mta.yaml` — BTP CF deployment descriptor
-- RELACON holds all API keys — users just authenticate via SAP credentials
+- **Expanded (256px):** logo + "WM Assistant / Warehouse AI" text on left, collapse button (PanelLeftClose) on right
+- **Collapsed (64px):** entire header becomes a click target (expand on click) — logo centred, no stacking
+- The logo is always `h-6` (24px) in both states — does not resize on collapse
+- Animated with `motion.div animate={{ width: collapsed ? 64 : 256 }}` spring
+
+---
+
+## Key Implementation Notes
+
+- **Vite proxy:** `ui/vite.config.ts` proxies `/api` to `localhost:3001` — dev and prod use same fetch calls
+- **SSE in React:** `client.ts` `streamChat()` uses `fetch` + `ReadableStream` reader, no EventSource
+- **Tool call loop:** all three providers (Claude, OpenAI, Gemini) implement a `while(true)` agentic loop — tool results are fed back until `end_turn` / no more tool calls
+- **CSRF:** `s4hClient.js` in `sap-wm-mcp` fetches a fresh CSRF token before each POST — wm-assistant never touches SAP directly
+- **Negative stock in 999/998:** expected behaviour (GI before TO confirm) — the system prompt template tells the AI this
+- **Type 001 blocks negative stock:** documented in sap-wm-mcp — never use as source/dest for ad-hoc TOs
+
+---
+
+## What's Done
+
+- ✅ Server: Express, streaming agentic loop, MCP client, multi-provider, local storage
+- ✅ UI: Chat, Sidebar (collapsible), ModelSelector, SettingsPanel (providers + custom + instructions + memory)
+- ✅ ToolResultCard: structured rendering for all 23 tool result shapes
+- ✅ System prompt: 2-layer architecture (base + user config template)
+- ✅ Auto-title: AI-generated conversation titles (Gemini Flash / Haiku / GPT-4o-mini)
+- ✅ Custom providers: any OpenAI-compatible endpoint, quick-fill presets
+- ✅ GitHub: https://github.com/CodeOfHANA/wm-assistant.git (main branch)
+
+## What's Next
+
+- **Markdown rendering** — assistant responses are plain text; `react-markdown` would render headers, lists, bold from AI responses (highest demo value)
+- **Stop streaming button** — cancel a running response mid-stream (AbortController wired in, just needs UI button)
+- **Conversation rename** — click title in sidebar to edit inline
+- **Vite asset cleanup** — `ui/src/assets/react.svg`, `hero.png`, `vite.svg` are unused scaffolding leftovers
+- **Phase 2: BTP CF deployment** — full plan in `../sap-wm-mcp/docs/phase2-implementation-plan.md`
 
 ---
 
 ## Custom Skills
 
-| Skill | Command | Use When |
-|---|---|---|
-| Add UI component | `/wma-add-component` | Scaffold a new React component following RELACON design system |
-| Sync docs | `/wma-doc-sync` | Update CLAUDE.md progress after completing a day |
+| Command | When to use |
+|---|---|
+| `/wma-add-component` | Scaffold a new React component following RELACON design system |
+| `/wma-doc-sync` | Update this CLAUDE.md after completing a feature |
