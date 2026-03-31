@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { MotionConfig, motion } from 'framer-motion';
 import { ToastProvider, useToast } from './components/Toaster';
 import { I18nProvider, useTranslation } from './i18n';
-import { Settings, Sun, Moon } from 'lucide-react';
+import { Settings, Sun, Moon, FileText } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Chat } from './components/Chat';
 import { Dashboard } from './components/Dashboard';
@@ -282,13 +282,27 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
               ) : (
                 <span className="animate-pulse text-wm-muted">{t('app.loadingStats')}</span>
               )}
-              <button
-                onClick={() => statsWarehouse && refreshStats(statsWarehouse)}
-                className="ml-auto text-wm-muted hover:text-wm-text transition-colors"
-                title={t('app.refreshStats')}
-              >
-                ↻
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!statsWarehouse) return;
+                    const query = `Please prepare a comprehensive shift handover report for warehouse ${statsWarehouse}. Cover:\n1. Open transfer orders — total count and any aged or overdue orders\n2. Negative stock positions — which materials and bins are affected\n3. Replenishment needs — bins below minimum stock level\n4. Goods receipt and goods issue — pending items count\n5. Inventory anomalies — any irregularities to flag for the incoming shift\n\nFormat it as a structured handover document suitable for the incoming shift supervisor.`;
+                    handleAskFromDashboard(query);
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-wm-muted hover:text-wm-accent transition-colors px-1.5 py-0.5 rounded hover:bg-wm-surface-2"
+                  title={t('app.handoverReport')}
+                >
+                  <FileText size={11} />
+                  <span className="hidden sm:inline">{t('app.handoverReport')}</span>
+                </button>
+                <button
+                  onClick={() => statsWarehouse && refreshStats(statsWarehouse)}
+                  className="text-wm-muted hover:text-wm-text transition-colors"
+                  title={t('app.refreshStats')}
+                >
+                  ↻
+                </button>
+              </div>
             </div>
           )}
 

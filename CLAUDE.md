@@ -352,12 +352,17 @@ After first exchange completes:
 - ✅ ToolResultCard action cells: `noTitle` prop on `Td` suppresses "Click to copy" tooltip on Confirm/Investigate/Status buttons
 - ✅ Tool call header enrichment: `ToolCard` shows human-readable result summary (e.g. "12 orders", "8 bins need replen.") in collapsed header
 - ✅ Follow-up suggestion chips: after the last assistant tool response, up to 3 contextual chips appear (e.g. "Confirm all open TOs →", "Show stock for material X →") — disappear when next message is sent
+- ✅ +Memory button on AI responses: Brain icon saves the response text as a memory fact; auto-memory extraction fires silently after sessions with tool calls
+- ✅ Auto shift briefing toggle: opt-in setting that fires a shift overview query when a new conversation is created
+- ✅ PWA: installable via `vite-plugin-pwa`, Workbox cache-first for assets, network-first for `/api/*`
+- ✅ Structured confirm-action card: destructive operations (confirm/create/cancel TO, replenish, cycle count) show a rich card with action type header, meta table (material/qty/from/to), GI-risk or cancel warning strip
+- ✅ Shift handover report: `FileText` button in stats bar fires a comprehensive multi-tool AI query (open TOs, negative stock, replenishment, GR/GI pending, anomalies) and opens result in a new conversation
 
 ## What's Next
 
-- **Session memory quick-add** — +Memory button on AI responses
 - **Conversation labels / color tags** — tag conversations in sidebar
 - **Message reactions** — 👍/👎 on AI responses
+- **Voice input — push-to-talk** — mic button, Web Speech API
 - **Token / cost estimator** — approximate token count + cost badge per response (backlog)
 - **Phase 2: BTP CF deployment** — full plan in `../sap-wm-mcp/docs/phase2-implementation-plan.md`
 
