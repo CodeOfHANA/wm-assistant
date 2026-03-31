@@ -1,0 +1,7 @@
+node_modules/
+.env
+data/
+ui/node_modules/
+ui/dist/
+*.log
+RELACON-pure-black*

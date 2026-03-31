@@ -1,0 +1,25 @@
+{
+  "name": "wm-assistant",
+  "version": "1.0.0",
+  "description": "Browser-based AI assistant for SAP Classic WM — multi-model chat (Claude, GPT-4o, Gemini) with streaming, project memory, and structured warehouse data views",
+  "type": "module",
+  "scripts": {
+    "start": "node server/app.js",
+    "dev": "node --watch server/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "Noman Mohamed Hanif <noman@relacon.de> (https://github.com/CodeOfHANA)",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@google/generative-ai": "^0.21.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "openai": "^4.83.0",
+    "uuid": "^11.1.0"
+  }
+}
