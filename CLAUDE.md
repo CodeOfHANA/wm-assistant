@@ -357,13 +357,20 @@ After first exchange completes:
 - ✅ PWA: installable via `vite-plugin-pwa`, Workbox cache-first for assets, network-first for `/api/*`
 - ✅ Structured confirm-action card: destructive operations (confirm/create/cancel TO, replenish, cycle count) show a rich card with action type header, meta table (material/qty/from/to), GI-risk or cancel warning strip
 - ✅ Shift handover report: `FileText` button in stats bar fires a comprehensive multi-tool AI query (open TOs, negative stock, replenishment, GR/GI pending, anomalies) and opens result in a new conversation
+- ✅ Voice input (push-to-talk): Mic button in chat input bar, Web Speech API, language-aware (de-DE / en-US), pulsing red while recording, hidden on unsupported browsers
+- ✅ Proactive anomaly alerts: stats auto-poll every 2 min; toasts fire when openTOs / negativeQuants / replenishmentNeeds increase (EN + DE)
+- ✅ Architecture fixes: lazy-load xlsx (main bundle 881 KB → 598 KB), SpeechRecognition unmount cleanup, PATCH→PUT + body validation on /conversations/:id
+- ✅ Settings UX: Reset to defaults button for Project Instructions, creation date on memory facts, fix hardcoded "Saved" string
+- ✅ Markdown export: tool call JSON results included as fenced code blocks
+- ✅ Dashboard shortcut: `d` key toggles Dashboard view; listed in keyboard cheatsheet overlay
 
 ## What's Next
 
 - **Conversation labels / color tags** — tag conversations in sidebar
 - **Message reactions** — 👍/👎 on AI responses
-- **Voice input — push-to-talk** — mic button, Web Speech API
-- **Token / cost estimator** — approximate token count + cost badge per response (backlog)
+- **Bin heatmap / slotting view** — requires bin grid data from MCP server
+- **Team / role mode** — multi-user, auth, role-based visibility
+- **Token / cost estimator** — approximate token count + cost badge per response
 - **Phase 2: BTP CF deployment** — full plan in `../sap-wm-mcp/docs/phase2-implementation-plan.md`
 
 ---
