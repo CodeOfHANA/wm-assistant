@@ -94,6 +94,8 @@ const en = {
   // Chat — input bar + controls
   'chat.placeholder':       'Ask about your warehouse...',
   'chat.inputHint':         'Enter to send · Shift+Enter for new line · ↑ recall last · Ctrl+K new chat',
+  'chat.voiceStart':        'Start voice input',
+  'chat.voiceStop':         'Stop recording',
   'chat.print':             'Print',
   'chat.printTitle':        'Print / Save as PDF',
   'chat.exportTitle':       'Export conversation as Markdown',
@@ -428,6 +430,8 @@ const de: { [K in keyof typeof en]: string } = {
   // Chat — input bar + controls
   'chat.placeholder':       'Fragen Sie alles über Ihr Lager…',
   'chat.inputHint':         'Eingabe zum Senden · Shift+Eingabe neue Zeile · ↑ letzte abrufen · Ctrl+K neuer Chat',
+  'chat.voiceStart':        'Spracheingabe starten',
+  'chat.voiceStop':         'Aufnahme stoppen',
   'chat.print':             'Drucken',
   'chat.printTitle':        'Drucken / Als PDF speichern',
   'chat.exportTitle':       'Unterhaltung als Markdown exportieren',

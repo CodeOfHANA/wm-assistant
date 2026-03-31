@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2 } from 'lucide-react';
+import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2, Mic, MicOff } from 'lucide-react';
 import { Relacottchen, WorkingRelacottchen } from './Relacottchen';
 import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
@@ -461,6 +461,34 @@ export function Chat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
+
+  const voiceSupported = typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const toggleVoice = () => {
+    if (!voiceSupported) return;
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const SR = (window.SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition: typeof window.SpeechRecognition }).webkitSpeechRecognition);
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = language === 'de' ? 'de-DE' : 'en-US';
+    recognition.onstart  = () => setIsRecording(true);
+    recognition.onend    = () => { setIsRecording(false); recognitionRef.current = null; };
+    recognition.onerror  = () => { setIsRecording(false); recognitionRef.current = null; };
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0]?.[0]?.transcript?.trim();
+      if (transcript) setInput(prev => (prev ? prev + ' ' : '') + transcript);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
 
   // Sync external messages (when conversation switches)
   useEffect(() => {
@@ -1160,6 +1188,23 @@ export function Chat({
             rows={1}
             className="flex-1 bg-transparent text-wm-text text-sm placeholder-wm-muted resize-none outline-none leading-relaxed max-h-40 py-1"
           />
+          {voiceSupported && !isStreaming && (
+            <motion.button
+              onClick={toggleVoice}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.93 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              title={isRecording ? t('chat.voiceStop') : t('chat.voiceStart')}
+              className={clsx(
+                'w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mb-0.5 transition-colors',
+                isRecording
+                  ? 'bg-red-500/20 border border-red-500/50 text-red-500 animate-pulse'
+                  : 'text-wm-muted hover:text-wm-text hover:bg-wm-surface',
+              )}
+            >
+              {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+            </motion.button>
+          )}
           {isStreaming ? (
             <motion.button
               onClick={() => abortRef.current?.abort()}
