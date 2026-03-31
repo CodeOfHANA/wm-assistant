@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { streamChat, autoSelectModel, generateTitle } from './aiRouter.js';
 import { getKey, setKey, removeKey, getProviderStatus, addCustomProvider, removeCustomProvider } from './providerStore.js';
-import { getMcpTools } from './mcpClient.js';
+import { getMcpTools, callMcpTool } from './mcpClient.js';
 import {
   getProject, saveProject,
   getMemory, addMemoryFact, deleteMemoryFact,
@@ -17,7 +17,12 @@ const PORT = process.env.PORT ?? 3001;
 // Covers role, tool catalog, and behaviour rules.
 // SAP system specifics (warehouse, plant, etc.) belong in user project instructions.
 
-const BASE_SYSTEM_PROMPT = `You are WM Assistant — an AI assistant for SAP Classic Warehouse Management (LE-WM).
+const BASE_SYSTEM_PROMPT = `You are WM Assistant — an AI assistant for SAP Classic Warehouse Management (LE-WM), developed by RELACON IT Consulting GmbH.
+
+## Identity
+When asked who you are, what you are, or who made/built/developed you, always respond along these lines:
+"I'm WM Assistant, an AI assistant for SAP Classic Warehouse Management, developed by RELACON IT Consulting GmbH."
+You may then describe your capabilities. Never claim to be Claude, GPT, Gemini, or any other underlying model — you are WM Assistant by RELACON.
 
 You have tools that connect directly to a live S/4HANA system. They are organised as follows:
 
@@ -164,7 +169,7 @@ app.delete('/api/conversations/:id', (req, res) => {
 //   model           — model ID (optional; auto-selected if omitted)
 
 app.post('/api/chat', async (req, res) => {
-  const { conversationId, message, provider = 'auto', model } = req.body;
+  const { conversationId, message, provider = 'auto', model, language } = req.body;
 
   if (!message?.trim()) {
     return res.status(400).json({ error: 'message required' });
@@ -181,7 +186,8 @@ app.post('/api/chat', async (req, res) => {
   }
 
   // Append the new user message
-  messages = [...messages, { role: 'user', content: message.trim() }];
+  const userCreatedAt = new Date().toISOString();
+  messages = [...messages, { role: 'user', content: message.trim(), createdAt: userCreatedAt }];
 
   // Build system prompt: fixed base + user project instructions + memory facts
   const project  = getProject();
@@ -192,7 +198,13 @@ app.post('/api/chat', async (req, res) => {
   const userConfig = project.instructions?.trim()
     ? `\n\n## Your configuration\n${project.instructions.trim()}`
     : '';
-  const systemPrompt = BASE_SYSTEM_PROMPT + userConfig + memBlock;
+  const langMap = { de: 'German (Deutsch)', en: 'English' };
+  const langLabel = langMap[language] ?? null;
+  const langPrefix = langLabel && language !== 'en'
+    ? `IMPORTANT: Always respond in ${langLabel}. All your answers, explanations, and summaries must be written in ${langLabel}. Only SAP field names, transaction codes, and system identifiers may remain in English.\n\n`
+    : '';
+  const systemPrompt = langPrefix + BASE_SYSTEM_PROMPT + userConfig + memBlock;
+  console.log(`[chat] language=${language ?? 'unset'} langPrefix=${langPrefix ? 'yes' : 'no'}`);
 
   // Set up SSE
   res.setHeader('Content-Type', 'text/event-stream');
@@ -222,12 +234,11 @@ app.post('/api/chat', async (req, res) => {
   if (conv && assistantText) {
     const updatedMessages = [
       ...messages,
-      { role: 'assistant', content: assistantText },
+      { role: 'assistant', content: assistantText, createdAt: new Date().toISOString() },
     ];
-    // Auto-title from first user message if still default
-    const title = conv.title === 'New conversation'
-      ? message.trim().slice(0, 60)
-      : conv.title;
+    // Auto-title from first user message if still at default placeholder (any language, ≤25 chars)
+    const isDefaultTitle = conv.title.trim().length <= 25 && conv.messages.length <= 1;
+    const title = isDefaultTitle ? message.trim().slice(0, 60) : conv.title;
     saveConversation({ ...conv, title, messages: updatedMessages });
   }
 });
@@ -253,6 +264,93 @@ app.post('/api/conversations/:id/generate-title', async (req, res) => {
     saveConversation({ ...conv, title });
     res.json({ title });
   }
+});
+
+// ── Material stock summary (for hover tooltips) ───────────────────────────────
+
+app.get('/api/material-stock', async (req, res) => {
+  const { warehouse, material } = req.query;
+  if (!warehouse || !material) return res.status(400).json({ error: 'warehouse and material required' });
+  try {
+    const result = await callMcpTool('get_stock_for_material', { warehouse, material, top: 50 });
+    const stock = result?.stock ?? [];
+    const total     = stock.reduce((s, r) => s + (r.totalStock     ?? 0), 0);
+    const available = stock.reduce((s, r) => s + (r.availableStock ?? 0), 0);
+    const uom       = stock[0]?.uom ?? '';
+    res.json({ material, total, available, bins: stock.length, uom });
+  } catch {
+    res.status(500).json({ error: 'lookup failed' });
+  }
+});
+
+// ── Shift stats (open TOs / negative stock / replenishment needs) ─────────────
+
+app.get('/api/stats', async (req, res) => {
+  const { warehouse } = req.query;
+  if (!warehouse) return res.status(400).json({ error: 'warehouse required' });
+
+  const safe = async (name, args) => {
+    try { return await callMcpTool(name, args); } catch { return null; }
+  };
+
+  const [tos, neg, rep] = await Promise.all([
+    safe('get_open_transfer_orders', { warehouse }),
+    safe('get_negative_stock_report', { warehouse }),
+    safe('get_replenishment_needs',   { warehouse }),
+  ]);
+
+  res.json({
+    openTOs:           tos?.count  ?? tos?.orders?.length  ?? null,
+    negativeQuants:    neg?.count  ?? neg?.negativeQuants?.length ?? null,
+    replenishmentNeeds: rep?.count ?? rep?.bins?.length    ?? null,
+  });
+});
+
+// ── Dashboard (comprehensive shift overview — calls 7 MCP tools in parallel) ──
+
+app.get('/api/dashboard', async (req, res) => {
+  const { warehouse } = req.query;
+  if (!warehouse) return res.status(400).json({ error: 'warehouse required' });
+
+  const safe = async (name, args) => {
+    try { return await callMcpTool(name, args); } catch { return null; }
+  };
+
+  const [tos, neg, rep, util, anom, gr, gi] = await Promise.all([
+    safe('get_open_transfer_orders', { warehouse }),
+    safe('get_negative_stock_report', { warehouse }),
+    safe('get_replenishment_needs',   { warehouse }),
+    safe('get_bin_utilization',       { warehouse }),
+    safe('get_inventory_anomalies',   { warehouse }),
+    safe('get_goods_receipt_monitor', { warehouse }),
+    safe('get_goods_issue_monitor',   { warehouse }),
+  ]);
+
+  res.json({
+    fetchedAt: new Date().toISOString(),
+    warehouse,
+    openTOs: {
+      count:     tos?.count  ?? tos?.orders?.length  ?? null,
+      topOrders: (tos?.orders ?? []).slice(0, 8),
+    },
+    negativeStock: {
+      count: neg?.count ?? neg?.negativeQuants?.length ?? null,
+      items: (neg?.negativeQuants ?? []).slice(0, 8),
+    },
+    replenishment: {
+      count: rep?.count ?? rep?.bins?.length ?? null,
+      bins:  (rep?.bins ?? []).slice(0, 8),
+    },
+    utilization: {
+      byStorageType: util?.byStorageType ?? [],
+    },
+    anomalies: {
+      count: anom?.count ?? anom?.anomalies?.length ?? null,
+      items: (anom?.anomalies ?? []).slice(0, 8),
+    },
+    grPending: { count: gr?.count  ?? gr?.items?.length  ?? null },
+    giPending: { count: gi?.count  ?? gi?.items?.length  ?? null },
+  });
 });
 
 // ── Auto-select preview (UI can call this to show which model will be used) ───

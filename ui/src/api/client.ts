@@ -91,8 +91,99 @@ export const getConversation = (id: string) =>
 export const deleteConversation = (id: string) =>
   del(`/conversations/${id}`);
 
+export const renameConversation = (id: string, title: string) =>
+  put<ConversationSummary>(`/conversations/${id}`, { title });
+
 export const generateConversationTitle = (id: string, message: string) =>
   post<{ title: string }>(`/conversations/${id}/generate-title`, { message });
+
+// ── Material stock summary ────────────────────────────────────────────────────
+
+export interface MaterialStock {
+  material: string;
+  total: number;
+  available: number;
+  bins: number;
+  uom: string;
+}
+
+export const getMaterialStock = (warehouse: string, material: string) =>
+  get<MaterialStock>(`/material-stock?warehouse=${encodeURIComponent(warehouse)}&material=${encodeURIComponent(material)}`);
+
+// ── Shift stats ───────────────────────────────────────────────────────────────
+
+export interface ShiftStats {
+  openTOs: number | null;
+  negativeQuants: number | null;
+  replenishmentNeeds: number | null;
+}
+
+export const getShiftStats = (warehouse: string) =>
+  get<ShiftStats>(`/stats?warehouse=${encodeURIComponent(warehouse)}`);
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export interface DashboardToRow {
+  toNumber: string;
+  toItem?: string;
+  status?: string;
+  ageFlag?: string;
+  daysSinceCreation?: number | null;
+  material?: string;
+  sourceType?: string;
+  sourceBin?: string;
+  destType?: string;
+  destBin?: string;
+  openQty?: number;
+  uom?: string;
+}
+
+export interface DashboardNegQuant {
+  material?: string;
+  storageType?: string;
+  bin?: string;
+  qty?: number;
+  plant?: string;
+}
+
+export interface DashboardReplenBin {
+  bin?: string;
+  storageType?: string;
+  material?: string;
+  currentQty?: number;
+  replenishmentQty?: number;
+  uom?: string;
+}
+
+export interface DashboardUtilRow {
+  storageType?: string;
+  usedBins?: number;
+  totalBins?: number;
+  emptyBins?: number;
+  utilization?: number;
+}
+
+export interface DashboardAnomaly {
+  type?: string;
+  material?: string;
+  description?: string;
+  severity?: string;
+}
+
+export interface DashboardData {
+  fetchedAt: string;
+  warehouse: string;
+  openTOs:       { count: number | null; topOrders: DashboardToRow[] };
+  negativeStock: { count: number | null; items: DashboardNegQuant[] };
+  replenishment: { count: number | null; bins: DashboardReplenBin[] };
+  utilization:   { byStorageType: DashboardUtilRow[] };
+  anomalies:     { count: number | null; items: DashboardAnomaly[] };
+  grPending:     { count: number | null };
+  giPending:     { count: number | null };
+}
+
+export const getDashboard = (warehouse: string) =>
+  get<DashboardData>(`/dashboard?warehouse=${encodeURIComponent(warehouse)}`);
 
 // ── Auto-select preview ───────────────────────────────────────────────────────
 
@@ -106,6 +197,7 @@ export interface ChatRequest {
   message: string;
   provider?: string;
   model?: string;
+  language?: string;
 }
 
 /**

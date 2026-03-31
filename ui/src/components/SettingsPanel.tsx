@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Check, ExternalLink, Eye, EyeOff,
   Trash2, Plus, ChevronDown, ChevronUp,
-  Brain, BookOpen, Plug,
+  Brain, BookOpen, Plug, BarChart2, Languages,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
@@ -13,11 +13,13 @@ import {
   getMemory, addMemoryFact, deleteMemoryFact,
 } from '../api/client';
 import type { Provider, MemoryFact, Project } from '../types';
+import { useToast } from './Toaster';
+import { useTranslation } from '../i18n';
 
 // ── Provider logos as styled badges ──────────────────────────────────────────
 
 const PROVIDER_STYLES: Record<string, { bg: string; label: string; icon: string }> = {
-  anthropic: { bg: 'bg-amber-900/40 border-amber-700/40',  label: 'text-amber-300', icon: '✦' },
+  anthropic: { bg: 'bg-amber-500/15 border-amber-500/30',  label: 'text-amber-700', icon: '✦' },
   openai:    { bg: 'bg-emerald-900/40 border-emerald-700/40', label: 'text-emerald-300', icon: '⬡' },
   google:    { bg: 'bg-blue-900/40 border-blue-700/40',    label: 'text-blue-300',   icon: '◈' },
 };
@@ -33,6 +35,8 @@ function ProviderCard({
   onConnected: () => void;
   onDisconnected: () => void;
 }) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const [expanded, setExpanded]   = useState(false);
   const [apiKey, setApiKey]       = useState('');
   const [showKey, setShowKey]     = useState(false);
@@ -47,7 +51,7 @@ function ProviderCard({
   }, [expanded]);
 
   const handleConnect = async () => {
-    if (!apiKey.trim()) { setError('API key cannot be empty'); return; }
+    if (!apiKey.trim()) { setError(t('settings.apiKeyEmpty')); return; }
     setSaving(true);
     setError(null);
     try {
@@ -56,9 +60,11 @@ function ProviderCard({
       setApiKey('');
       setExpanded(false);
       setTimeout(() => setSuccess(false), 2000);
+      toast(`${provider.name} — ${t('settings.connected')}`);
       onConnected();
     } catch (err: unknown) {
-      setError((err as Error).message ?? 'Failed to save key');
+      setError((err as Error).message ?? t('settings.failedSaveKey'));
+      toast(t('settings.failedSaveKey'), 'error');
     } finally {
       setSaving(false);
     }
@@ -67,8 +73,11 @@ function ProviderCard({
   const handleDisconnect = async () => {
     try {
       await disconnectProvider(provider.id);
+      toast(`${provider.name} — ${t('settings.disconnect').toLowerCase()}`);
       onDisconnected();
-    } catch {}
+    } catch {
+      toast(t('settings.failedDisconn'), 'error');
+    }
   };
 
   return (
@@ -92,26 +101,26 @@ function ProviderCard({
         {/* Status + action */}
         {provider.connected ? (
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-              <Check size={11} /> Connected
+            <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+              <Check size={11} /> {t('settings.connected')}
             </span>
             <button
               onClick={handleDisconnect}
-              className="text-[11px] text-wm-muted hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-900/20"
+              className="text-[11px] text-wm-muted hover:text-red-600 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10"
             >
-              Disconnect
+              {t('settings.disconnect')}
             </button>
           </div>
         ) : success ? (
-          <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-            <Check size={11} /> Saved
+          <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+            <Check size={11} /> {t('settings.saved')}
           </span>
         ) : (
           <button
             onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-wm-primary hover:bg-wm-primary-hover text-wm-text font-medium transition-colors"
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-wm-primary hover:bg-wm-primary-hover text-white font-medium transition-colors"
           >
-            Connect
+            {t('settings.connect')}
             {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
         )}
@@ -151,7 +160,7 @@ function ProviderCard({
                 </button>
               </div>
 
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-xs text-red-600">{error}</p>}
 
               {/* Actions */}
               <div className="flex items-center justify-between">
@@ -161,14 +170,14 @@ function ProviderCard({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-[11px] text-wm-accent hover:underline"
                 >
-                  Get API key <ExternalLink size={10} />
+                  {t('settings.getApiKey')} <ExternalLink size={10} />
                 </a>
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setExpanded(false); setApiKey(''); setError(null); }}
                     className="text-xs px-3 py-1.5 rounded-lg text-wm-muted hover:text-wm-text hover:bg-wm-surface-2 transition-colors"
                   >
-                    Cancel
+                    {t('settings.cancel')}
                   </button>
                   <motion.button
                     onClick={handleConnect}
@@ -180,17 +189,15 @@ function ProviderCard({
                       'text-xs px-3 py-1.5 rounded-lg font-medium transition-colors',
                       saving || !apiKey.trim()
                         ? 'bg-wm-border text-wm-muted cursor-not-allowed'
-                        : 'bg-wm-primary hover:bg-wm-primary-hover text-wm-text',
+                        : 'bg-wm-primary hover:bg-wm-primary-hover text-white',
                     )}
                   >
-                    {saving ? 'Saving…' : 'Save key'}
+                    {saving ? t('settings.saving') : t('settings.saveKey')}
                   </motion.button>
                 </div>
               </div>
 
-              <p className="text-[10px] text-wm-muted">
-                Key is stored server-side only — never sent to the browser after saving.
-              </p>
+              <p className="text-[10px] text-wm-muted">{t('settings.keyHint')}</p>
             </div>
           </motion.div>
         )}
@@ -211,6 +218,8 @@ const POPULAR_PROVIDERS = [
 ];
 
 function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const [open, setOpen]         = useState(false);
   const [name, setName]         = useState('');
   const [baseUrl, setBaseUrl]   = useState('');
@@ -228,16 +237,18 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
 
   const handleAdd = async () => {
     if (!name.trim() || !baseUrl.trim() || !model.trim() || !apiKey.trim()) {
-      setError('All fields required'); return;
+      setError(t('settings.allFieldsReq')); return;
     }
     setSaving(true); setError(null);
     try {
       await addCustomProvider({ name: name.trim(), baseUrl: baseUrl.trim(), model: model.trim(), apiKey: apiKey.trim() });
       setName(''); setBaseUrl(''); setModel(''); setApiKey('');
       setOpen(false);
+      toast(`${name.trim()} — ${t('settings.addProvider').toLowerCase()}`);
       onAdded();
     } catch (err: unknown) {
       setError((err as Error).message);
+      toast(t('settings.failedAddProv'), 'error');
     } finally {
       setSaving(false);
     }
@@ -253,8 +264,8 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
           <Plus size={14} className="text-wm-muted" />
         </div>
         <div className="flex-1">
-          <p className="text-wm-text-dim text-sm font-medium">Add custom provider</p>
-          <p className="text-wm-muted text-[11px]">Any OpenAI-compatible API — Mistral, Groq, Ollama…</p>
+          <p className="text-wm-text-dim text-sm font-medium">{t('settings.addCustom')}</p>
+          <p className="text-wm-muted text-[11px]">{t('settings.addCustomDesc')}</p>
         </div>
         {open ? <ChevronUp size={13} className="text-wm-muted" /> : <ChevronDown size={13} className="text-wm-muted" />}
       </button>
@@ -272,7 +283,7 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
 
               {/* Quick-fill presets */}
               <div>
-                <p className="text-[10px] text-wm-muted mb-1.5 uppercase tracking-widest">Quick fill</p>
+                <p className="text-[10px] text-wm-muted mb-1.5 uppercase tracking-widest">{t('settings.quickFill')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {POPULAR_PROVIDERS.map(p => (
                     <button
@@ -289,7 +300,7 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
               {/* Fields */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-wm-muted mb-1 block">Display name</label>
+                  <label className="text-[10px] text-wm-muted mb-1 block">{t('settings.displayName')}</label>
                   <input
                     value={name}
                     onChange={e => setName(e.target.value)}
@@ -298,7 +309,7 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-wm-muted mb-1 block">Model name</label>
+                  <label className="text-[10px] text-wm-muted mb-1 block">{t('settings.modelName')}</label>
                   <input
                     value={model}
                     onChange={e => setModel(e.target.value)}
@@ -309,7 +320,7 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
               </div>
 
               <div>
-                <label className="text-[10px] text-wm-muted mb-1 block">Base URL</label>
+                <label className="text-[10px] text-wm-muted mb-1 block">{t('settings.baseUrl')}</label>
                 <input
                   value={baseUrl}
                   onChange={e => setBaseUrl(e.target.value)}
@@ -319,7 +330,7 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
               </div>
 
               <div>
-                <label className="text-[10px] text-wm-muted mb-1 block">API key</label>
+                <label className="text-[10px] text-wm-muted mb-1 block">{t('settings.apiKey')}</label>
                 <div className="relative">
                   <input
                     type={showKey ? 'text' : 'password'}
@@ -339,14 +350,14 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
                 </div>
               </div>
 
-              {error && <p className="text-xs text-red-400">{error}</p>}
+              {error && <p className="text-xs text-red-600">{error}</p>}
 
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => { setOpen(false); setError(null); }}
                   className="text-xs px-3 py-1.5 rounded-lg text-wm-muted hover:text-wm-text hover:bg-wm-surface-2 transition-colors"
                 >
-                  Cancel
+                  {t('settings.cancel')}
                 </button>
                 <motion.button
                   onClick={handleAdd}
@@ -356,16 +367,55 @@ function CustomProviderForm({ onAdded }: { onAdded: () => void }) {
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   className={clsx(
                     'text-xs px-3 py-1.5 rounded-lg font-medium transition-colors',
-                    saving ? 'bg-wm-border text-wm-muted cursor-not-allowed' : 'bg-wm-primary hover:bg-wm-primary-hover text-wm-text',
+                    saving ? 'bg-wm-border text-wm-muted cursor-not-allowed' : 'bg-wm-primary hover:bg-wm-primary-hover text-white',
                   )}
                 >
-                  {saving ? 'Adding…' : 'Add provider'}
+                  {saving ? t('settings.adding') : t('settings.addProvider')}
                 </motion.button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Toggle switch ─────────────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange, label, description }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  description?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-wm-text text-sm">{label}</p>
+        {description && (
+          <p className="text-wm-muted text-[11px] leading-snug mt-0.5">{description}</p>
+        )}
+      </div>
+      {/* pill: 40×22 px — knob: 16×16 px, 3 px inset on each side */}
+      <button
+        onClick={() => onChange(!checked)}
+        title={checked ? t('settings.toggleHide') : t('settings.toggleShow')}
+        style={{ width: 40, height: 22 }}
+        className={clsx(
+          'relative flex-shrink-0 mt-0.5 rounded-full transition-colors duration-200 focus:outline-none',
+          checked ? 'bg-wm-primary' : 'bg-wm-border',
+        )}
+      >
+        <span
+          style={{ width: 16, height: 16, top: 3, left: 3 }}
+          className={clsx(
+            'absolute rounded-full bg-white shadow-sm transition-transform duration-200',
+            checked ? 'translate-x-[18px]' : 'translate-x-0',
+          )}
+        />
+      </button>
     </div>
   );
 }
@@ -390,14 +440,25 @@ function Section({ icon, title, children }: {
 
 // ── Main Settings Panel ───────────────────────────────────────────────────────
 
+const LANGUAGES = [
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'de', flag: '🇩🇪', label: 'Deutsch' },
+];
+
 interface Props {
   open: boolean;
   providers: Provider[];
+  showStats: boolean;
+  language: string;
   onClose: () => void;
   onProvidersChange: () => void;
+  onShowStatsChange: (v: boolean) => void;
+  onLanguageChange: (lang: string) => void;
 }
 
-export function SettingsPanel({ open, providers, onClose, onProvidersChange }: Props) {
+export function SettingsPanel({ open, providers, showStats, language, onClose, onProvidersChange, onShowStatsChange, onLanguageChange }: Props) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const [project, setProject]           = useState<Project | null>(null);
   const [instructions, setInstructions] = useState('');
   const [instrSaved, setInstrSaved]     = useState(false);
@@ -433,14 +494,20 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
       const fact = await addMemoryFact(text);
       setFacts(prev => [...prev, fact]);
       setNewFact('');
-    } catch {}
+      toast(t('toast.savedMemory'));
+    } catch {
+      toast(t('toast.failedMemory'), 'error');
+    }
   };
 
   const handleDeleteFact = async (id: string) => {
     try {
       await deleteMemoryFact(id);
       setFacts(prev => prev.filter(f => f.id !== id));
-    } catch {}
+      toast(t('toast.removedMemory'));
+    } catch {
+      toast(t('toast.failedRemMemory'), 'error');
+    }
   };
 
   return (
@@ -467,7 +534,7 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
           >
             {/* Header */}
             <div className="h-14 flex items-center justify-between px-5 border-b border-wm-border flex-shrink-0">
-              <p className="text-wm-text font-semibold text-sm">Settings</p>
+              <p className="text-wm-text font-semibold text-sm">{t('settings.title')}</p>
               <button
                 onClick={onClose}
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-wm-muted hover:text-wm-text hover:bg-wm-surface-2 transition-colors"
@@ -480,11 +547,8 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-8">
 
               {/* ── Providers ── */}
-              <Section icon={<Plug size={15} />} title="AI Providers">
-                <p className="text-wm-muted text-xs leading-relaxed">
-                  Connect your API keys. Keys are stored on the server — not in your browser.
-                  With multiple providers connected, <span className="text-wm-accent">Auto</span> routing picks the best model per query.
-                </p>
+              <Section icon={<Plug size={15} />} title={t('settings.providers')}>
+                <p className="text-wm-muted text-xs leading-relaxed">{t('settings.providersDesc')}</p>
                 <div className="space-y-2">
                   {/* Built-in providers */}
                   {providers.filter(p => !p.isCustom).map(p => (
@@ -512,17 +576,22 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                         <p className="text-wm-muted text-[11px] truncate font-mono">{p.vendor} · {p.customModel}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
                           <Check size={11} /> Connected
                         </span>
                         <button
                           onClick={async () => {
-                            await removeCustomProvider(p.id);
-                            onProvidersChange();
+                            try {
+                              await removeCustomProvider(p.id);
+                              toast(`${p.name} — ${t('settings.remove').toLowerCase()}`);
+                              onProvidersChange();
+                            } catch {
+                              toast(t('settings.failedRemProv'), 'error');
+                            }
                           }}
-                          className="text-[11px] text-wm-muted hover:text-red-400 transition-colors px-2 py-1 rounded-lg hover:bg-red-900/20"
+                          className="text-[11px] text-wm-muted hover:text-red-600 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10"
                         >
-                          Remove
+                          {t('settings.remove')}
                         </button>
                       </div>
                     </motion.div>
@@ -534,18 +603,15 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
               </Section>
 
               {/* ── Project Instructions ── */}
-              <Section icon={<BookOpen size={15} />} title="Project Instructions">
-                <p className="text-wm-muted text-xs leading-relaxed">
-                  These instructions are injected as the system prompt for every conversation.
-                  Think of it as the "Instructions" field in a Claude Desktop project.
-                </p>
+              <Section icon={<BookOpen size={15} />} title={t('settings.instructions')}>
+                <p className="text-wm-muted text-xs leading-relaxed">{t('settings.instructionsDesc')}</p>
                 <div className="relative">
                   <textarea
                     value={instructions}
                     onChange={e => handleInstructionsChange(e.target.value)}
                     rows={8}
                     className="w-full bg-wm-bg border border-wm-border focus:border-wm-accent rounded-xl px-3 py-2.5 text-sm text-wm-text placeholder-wm-muted outline-none resize-none leading-relaxed transition-colors"
-                    placeholder="You are an AI assistant for SAP Classic WM…"
+                    placeholder={t('settings.instructPlaceholder')}
                   />
                   <AnimatePresence>
                     {instrSaved && (
@@ -553,22 +619,19 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute bottom-3 right-3 flex items-center gap-1 text-[10px] text-emerald-400"
+                        className="absolute bottom-3 right-3 flex items-center gap-1 text-[10px] text-emerald-600"
                       >
                         <Check size={10} /> Saved
                       </motion.span>
                     )}
                   </AnimatePresence>
                 </div>
-                <p className="text-[10px] text-wm-muted">Auto-saved · {instructions.length} chars</p>
+                <p className="text-[10px] text-wm-muted">{t('settings.autoSaved', { n: instructions.length })}</p>
               </Section>
 
               {/* ── Memory ── */}
-              <Section icon={<Brain size={15} />} title="Memory">
-                <p className="text-wm-muted text-xs leading-relaxed">
-                  Facts remembered across all conversations. Injected below project instructions.
-                  Add things the AI should always know — warehouse numbers, materials, naming conventions.
-                </p>
+              <Section icon={<Brain size={15} />} title={t('settings.memory')}>
+                <p className="text-wm-muted text-xs leading-relaxed">{t('settings.memoryDesc')}</p>
 
                 {/* Existing facts */}
                 <div className="space-y-1.5">
@@ -579,7 +642,7 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                         animate={{ opacity: 1 }}
                         className="text-wm-muted text-xs py-2 text-center"
                       >
-                        No memory facts yet.
+                        {t('settings.noFacts')}
                       </motion.p>
                     )}
                     {facts.map(fact => (
@@ -594,7 +657,7 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                         <p className="flex-1 text-xs text-wm-text-dim leading-relaxed">{fact.text}</p>
                         <button
                           onClick={() => handleDeleteFact(fact.id)}
-                          className="text-wm-border group-hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                          className="text-wm-border group-hover:text-red-600 transition-colors flex-shrink-0 mt-0.5"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -610,7 +673,7 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                     value={newFact}
                     onChange={e => setNewFact(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddFact()}
-                    placeholder="e.g. Warehouse 102, plant 1010, storage location 0002"
+                    placeholder={t('settings.factPlaceholder')}
                     className="flex-1 bg-wm-bg border border-wm-border focus:border-wm-accent rounded-lg px-3 py-2 text-xs text-wm-text placeholder-wm-muted outline-none transition-colors"
                   />
                   <motion.button
@@ -622,7 +685,7 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                     className={clsx(
                       'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors',
                       newFact.trim()
-                        ? 'bg-wm-primary hover:bg-wm-primary-hover text-wm-text'
+                        ? 'bg-wm-primary hover:bg-wm-primary-hover text-white'
                         : 'bg-wm-border text-wm-muted cursor-not-allowed',
                     )}
                   >
@@ -631,14 +694,48 @@ export function SettingsPanel({ open, providers, onClose, onProvidersChange }: P
                 </div>
               </Section>
 
+              {/* ── Display ── */}
+              <Section icon={<BarChart2 size={15} />} title={t('settings.display')}>
+                <Toggle
+                  checked={showStats}
+                  onChange={onShowStatsChange}
+                  label={t('settings.statsBar')}
+                  description={t('settings.statsBarDesc')}
+                />
+              </Section>
+
+              {/* ── Language ── */}
+              <Section icon={<Languages size={15} />} title={t('settings.language')}>
+                <p className="text-wm-muted text-xs leading-relaxed">{t('settings.languageDesc')}</p>
+                <div className="flex gap-2">
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => { onLanguageChange(lang.code); toast(t('toast.languageSet', { lang: lang.label })); }}
+                      className={clsx(
+                        'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors flex-1 justify-center',
+                        language === lang.code
+                          ? 'bg-wm-primary border-wm-primary text-white'
+                          : 'bg-wm-surface border-wm-border text-wm-text-dim hover:border-wm-border-hover hover:bg-wm-surface-2',
+                      )}
+                    >
+                      <span className="text-base leading-none">{lang.flag}</span>
+                      {lang.label}
+                      {language === lang.code && <Check size={13} className="ml-auto opacity-80" />}
+                    </button>
+                  ))}
+                </div>
+              </Section>
+
             </div>
 
             {/* Footer */}
             <div className="px-5 py-3 border-t border-wm-border flex-shrink-0">
               <p className="text-[10px] text-wm-muted text-center">
-                WM Assistant · powered by{' '}
-                <span className="text-wm-accent">sap-wm-mcp</span>
-                {' '}· {providers.filter(p => p.connected).length} provider{providers.filter(p => p.connected).length !== 1 ? 's' : ''} connected
+                {t('settings.footer', {
+                  n: providers.filter(p => p.connected).length,
+                  s: providers.filter(p => p.connected).length !== 1 ? 's' : '',
+                })}
               </p>
             </div>
           </motion.div>

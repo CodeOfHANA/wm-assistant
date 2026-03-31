@@ -125,12 +125,18 @@ wm-assistant/
 │       ├── types.ts            ← Message, ToolEvent, StreamEvent, Provider, etc.
 │       ├── api/
 │       │   └── client.ts       ← typed fetch wrappers for all /api/* routes
+│       ├── i18n/
+│       │   └── index.tsx           ← I18nProvider + useTranslation() hook, EN + DE dictionaries
 │       └── components/
 │           ├── Sidebar.tsx         ← collapsible (64/256px spring), logo always visible
-│           ├── Chat.tsx            ← streaming thread, tool cards, suggestion chips
+│           ├── Chat.tsx            ← streaming thread, tool cards, follow-up chips, suggestion chips
+│           ├── Dashboard.tsx       ← shift overview: KPI cards, TO/replen/anomaly/util panels
 │           ├── ModelSelector.tsx   ← provider/model dropdown, tier icons
+│           ├── MaterialTooltip.tsx ← hover tooltip showing live stock summary for a material
+│           ├── Relacottchen.tsx    ← RELACON logo SVG + animated "working" variant
 │           ├── SettingsPanel.tsx   ← slide-in: provider connect, custom providers,
 │           │                          project instructions, memory panel
+│           ├── Toaster.tsx         ← toast notification context + provider
 │           └── ToolResultCard.tsx  ← structured WM data rendering (shape-based dispatch)
 │
 ├── data/                       ← gitignored, created at runtime by localStore.js
@@ -298,22 +304,61 @@ After first exchange completes:
 
 ---
 
+## i18n System
+
+`ui/src/i18n/index.tsx` — React Context + `useTranslation()` hook.
+
+- **Languages:** English (`en`) and German (`de`)
+- **Keys** organised by namespace: `app.*`, `sidebar.*`, `chat.*`, `model.*`, `settings.*`, `dashboard.*`, `tool.*`, `toast.*`, `tpl.*`, `shortcut.*`
+- TypeScript enforces completeness: `de` is typed as `{ [K in keyof typeof en]: string }` — missing keys are compile errors
+- Language is stored in `localStorage` (`wma_language`) and passed as `language` field in `/api/chat`
+- Server prepends a language instruction at the very start of `systemPrompt` so AI responds in the selected language
+- SAP identifiers (TO#, WM, IM, UOM, transaction codes) intentionally stay in English even in German mode
+- `Td` (click-to-copy table cells) uses `noTitle` prop to suppress the "Click to copy" tooltip on action-button cells
+
+---
+
 ## What's Done
 
 - ✅ Server: Express, streaming agentic loop, MCP client, multi-provider, local storage
 - ✅ UI: Chat, Sidebar (collapsible), ModelSelector, SettingsPanel (providers + custom + instructions + memory)
 - ✅ ToolResultCard: structured rendering for all 23 tool result shapes
 - ✅ System prompt: 2-layer architecture (base + user config template)
+- ✅ WM Assistant identity: `BASE_SYSTEM_PROMPT` includes RELACON branding — AI never claims to be Claude/GPT/Gemini
 - ✅ Auto-title: AI-generated conversation titles (Gemini Flash / Haiku / GPT-4o-mini)
 - ✅ Custom providers: any OpenAI-compatible endpoint, quick-fill presets
 - ✅ GitHub: https://github.com/CodeOfHANA/wm-assistant.git (main branch)
+- ✅ Markdown rendering: `react-markdown` + `remark-gfm`, full RELACON-styled component overrides
+- ✅ Stop streaming button: red square button, AbortController cancellation
+- ✅ Conversation rename: inline edit in sidebar
+- ✅ Vite asset cleanup: unused scaffolding files removed
+- ✅ Copy response button: hover clipboard icon on AI bubbles, 2s check flash
+- ✅ Keyboard shortcuts: Ctrl+K (new chat), ↑ (recall last), ? (cheatsheet overlay)
+- ✅ Conversation search: filter input in sidebar with clear button
+- ✅ Scroll-to-bottom button: floating ⌄ when scrolled up, smart auto-scroll
+- ✅ Export to Markdown: Save As dialog (File System Access API + fallback)
+- ✅ Export to Excel: per-table Excel button on all 8 ToolResultCard table renderers (xlsx)
+- ✅ Message timestamps: `createdAt` on messages, shown on hover below bubble
+- ✅ Pinned conversations: pin/unpin in sidebar, persisted in localStorage
+- ✅ Prompt templates: 10 WM templates in 3 categories, pre-fill input for editing
+- ✅ Keyboard shortcut cheatsheet: ? key or button → modal overlay with all shortcuts
+- ✅ Dark/light theme toggle: Sun/Moon button, CSS variables, persisted in localStorage
+- ✅ Server status indicator: pulsing green/red dot in header, polls /api/health every 30s
+- ✅ Quick-copy table cells: click any Td cell to copy value, teal flash confirmation
+- ✅ Print / PDF export: Print button, @media print CSS, hides chrome, shows RELACON header
+- ✅ Toast notifications: `Toaster.tsx` context provider, success/error/info toasts on all key actions
+- ✅ Language setting: English / Deutsch pill selector in Settings, injected into system prompt via `language` field in `/api/chat`
+- ✅ Full UI i18n: all components (`Sidebar`, `Chat`, `Dashboard`, `ModelSelector`, `SettingsPanel`, `ToolResultCard`) fully translated — zero hardcoded EN strings
+- ✅ ToolResultCard action cells: `noTitle` prop on `Td` suppresses "Click to copy" tooltip on Confirm/Investigate/Status buttons
+- ✅ Tool call header enrichment: `ToolCard` shows human-readable result summary (e.g. "12 orders", "8 bins need replen.") in collapsed header
+- ✅ Follow-up suggestion chips: after the last assistant tool response, up to 3 contextual chips appear (e.g. "Confirm all open TOs →", "Show stock for material X →") — disappear when next message is sent
 
 ## What's Next
 
-- **Markdown rendering** — assistant responses are plain text; `react-markdown` would render headers, lists, bold from AI responses (highest demo value)
-- **Stop streaming button** — cancel a running response mid-stream (AbortController wired in, just needs UI button)
-- **Conversation rename** — click title in sidebar to edit inline
-- **Vite asset cleanup** — `ui/src/assets/react.svg`, `hero.png`, `vite.svg` are unused scaffolding leftovers
+- **Session memory quick-add** — +Memory button on AI responses
+- **Conversation labels / color tags** — tag conversations in sidebar
+- **Message reactions** — 👍/👎 on AI responses
+- **Token / cost estimator** — approximate token count + cost badge per response (backlog)
 - **Phase 2: BTP CF deployment** — full plan in `../sap-wm-mcp/docs/phase2-implementation-plan.md`
 
 ---

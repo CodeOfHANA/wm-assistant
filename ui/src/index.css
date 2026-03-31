@@ -4,14 +4,50 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
+/* ── Dark theme (default) — identical to previous hardcoded hex values ───────── */
+:root {
+  --wm-bg:            10 18 20;      /* #0a1214 */
+  --wm-surface:       15 31 34;      /* #0f1f22 */
+  --wm-surface-2:     21 42 46;      /* #152a2e */
+  --wm-border:        26 51 57;      /* #1a3339 */
+  --wm-border-hover:  37 74 82;      /* #254a52 */
+  --wm-primary:       1 92 97;       /* #015c61 */
+  --wm-primary-hover: 0 78 84;       /* #004e54 */
+  --wm-accent:        46 163 242;    /* #2ea3f2 */
+  --wm-accent-mid:    21 119 155;    /* #15779b */
+  --wm-muted:         130 192 199;   /* #82c0c7 */
+  --wm-text:          240 249 250;   /* #f0f9fa */
+  --wm-text-dim:      168 205 209;   /* #a8cdd1 */
+  --scrollbar-thumb:  #1a3339;
+  --scrollbar-hover:  #254a52;
+}
+
+/* ── Light theme — RELACON teal brand preserved, surfaces flip to light ──────── */
+.light {
+  --wm-bg:            243 248 249;   /* #f3f8f9  — light teal-tinted white */
+  --wm-surface:       255 255 255;   /* #ffffff */
+  --wm-surface-2:     228 241 243;   /* #e4f1f3 */
+  --wm-border:        196 220 225;   /* #c4dce1 */
+  --wm-border-hover:  143 192 200;   /* #8fc0c8 */
+  --wm-primary:       1 92 97;       /* #015c61 — RELACON teal, unchanged */
+  --wm-primary-hover: 0 78 84;       /* #004e54 — unchanged */
+  --wm-accent:        0 112 187;     /* #0070bb — deeper for light bg */
+  --wm-accent-mid:    0 84 140;      /* #00548c */
+  --wm-muted:         55 115 124;    /* #37737c */
+  --wm-text:          10 18 20;      /* #0a1214 — dark text on light bg */
+  --wm-text-dim:      38 72 82;      /* #264852 */
+  --scrollbar-thumb:  #c4dce1;
+  --scrollbar-hover:  #8fc0c8;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #0a1214;
-  color: #f0f9fa;
+  background-color: rgb(var(--wm-bg));
+  color: rgb(var(--wm-text));
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -19,8 +55,32 @@ html, body, #root {
 /* Thin RELACON-teal scrollbar */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1a3339; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #254a52; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* RELACON logo — invert to white on dark, natural on light */
+.relacon-logo { filter: invert(1) brightness(0.85); }
+.light .relacon-logo { filter: none; }
+
+/* ── Print / PDF styles ──────────────────────────────────────────────────────── */
+@media print {
+  /* Force light background for printing */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Hide everything except the conversation */
+  .no-print { display: none !important; }
+
+  /* Reset layout — full width single column */
+  html, body, #root { height: auto; overflow: visible; background: #fff; color: #0a1214; }
+  .print-layout { display: block !important; }
+
+  /* Page breaks */
+  .print-break-before { break-before: page; }
+
+  /* Clean up chat bubbles for print */
+  .print-bubble-user { background: #e4f1f3 !important; border-radius: 8px; }
+  .print-bubble-ai   { background: #f8fbfc !important; border: 1px solid #c4dce1; border-radius: 8px; }
+}
 
 /* Streaming cursor blink */
 @keyframes blink {
@@ -29,7 +89,7 @@ html, body, #root {
 }
 .streaming-cursor::after {
   content: "▋";
-  color: #2ea3f2;
+  color: rgb(var(--wm-accent));
   animation: blink 1s step-end infinite;
   margin-left: 1px;
 }

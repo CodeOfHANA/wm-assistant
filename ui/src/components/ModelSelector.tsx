@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Zap, Cpu } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Provider } from '../types';
+import { useTranslation } from '../i18n';
 
 interface Props {
   providers: Provider[];
@@ -12,12 +13,13 @@ interface Props {
 }
 
 const tierIcon = {
-  premium:  <Cpu size={11} className="text-amber-400" />,
+  premium:  <Cpu size={11} className="text-amber-500" />,
   standard: <Cpu size={11} className="text-wm-accent" />,
-  fast:     <Zap size={11} className="text-green-400" />,
+  fast:     <Zap size={11} className="text-green-600" />,
 };
 
 export function ModelSelector({ providers, selectedProvider, selectedModel, onChange }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -32,8 +34,8 @@ export function ModelSelector({ providers, selectedProvider, selectedModel, onCh
   const connectedProviders = providers.filter(p => p.connected);
 
   // Build display label
-  let label = 'Auto';
-  let sublabel = 'Smart routing';
+  let label = t('model.auto');
+  let sublabel = t('model.autoSub');
   if (selectedProvider !== 'auto') {
     const prov = providers.find(p => p.id === selectedProvider);
     if (prov) {
@@ -76,14 +78,19 @@ export function ModelSelector({ providers, selectedProvider, selectedModel, onCh
                 className={clsx(
                   'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left',
                   selectedProvider === 'auto'
-                    ? 'bg-wm-primary text-wm-text'
+                    ? 'bg-wm-primary text-white'
                     : 'text-wm-text hover:bg-wm-surface-2',
                 )}
               >
-                <Zap size={13} className="text-wm-accent flex-shrink-0" />
+                <Zap size={13} className="flex-shrink-0" />
                 <div>
-                  <p className="font-medium">Auto</p>
-                  <p className="text-[11px] text-wm-muted">Best model for each query</p>
+                  <p className="font-medium">{t('model.auto')}</p>
+                  <p className={clsx(
+                    'text-[11px]',
+                    selectedProvider === 'auto' ? 'text-white/70' : 'text-wm-muted',
+                  )}>
+                    {t('model.autoBest')}
+                  </p>
                 </div>
               </button>
             </div>
@@ -103,7 +110,7 @@ export function ModelSelector({ providers, selectedProvider, selectedModel, onCh
                         className={clsx(
                           'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors text-left',
                           selectedProvider === prov.id && selectedModel === m.id
-                            ? 'bg-wm-primary text-wm-text'
+                            ? 'bg-wm-primary text-white'
                             : 'text-wm-text-dim hover:bg-wm-surface-2 hover:text-wm-text',
                         )}
                       >
@@ -118,8 +125,8 @@ export function ModelSelector({ providers, selectedProvider, selectedModel, onCh
 
             {connectedProviders.length === 0 && (
               <p className="px-4 py-3 text-xs text-wm-muted">
-                No providers connected.
-                <br />Add API keys in Settings.
+                {t('model.noProviders')}
+                <br />{t('model.noProvidersHint')}
               </p>
             )}
           </motion.div>

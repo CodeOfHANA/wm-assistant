@@ -20,6 +20,33 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getMcpTools, callMcpTool } from './mcpClient.js';
 import { getKey, getConnectedIds, getCustomProvider } from './providerStore.js';
 
+// ── Rate-limit detection ──────────────────────────────────────────────────────
+
+function isRateLimitError(err) {
+  return err?.status === 429 ||
+    (typeof err?.message === 'string' &&
+      /429|quota.exceed|too many requests|rate.?limit/i.test(err.message));
+}
+
+// ── Tool arg coercion (fixes open-source models passing numbers as strings) ────
+
+function coerceArgs(args, schema) {
+  if (!schema?.properties || typeof args !== 'object' || !args) return args;
+  const out = { ...args };
+  for (const [key, def] of Object.entries(schema.properties)) {
+    if (!(key in out)) continue;
+    const val = out[key];
+    if (def.type === 'number' || def.type === 'integer') {
+      if (typeof val === 'string' && val !== '') out[key] = Number(val);
+    } else if (def.type === 'boolean') {
+      if (typeof val === 'string') out[key] = val === 'true';
+    } else if (def.type === 'string') {
+      if (typeof val !== 'string') out[key] = String(val);
+    }
+  }
+  return out;
+}
+
 // ── Auto-model selection ──────────────────────────────────────────────────────
 
 export function autoSelectModel(lastMessage) {
@@ -88,13 +115,37 @@ function toOpenAITools(mcpTools) {
   }));
 }
 
-function toGeminiTools(mcpTools) {
-  return [{
-    functionDeclarations: mcpTools.map(t => ({
+// Strips all property-level type constraints so open-source models (Groq/Llama
+// etc.) that confuse string/number types pass server-side schema validation.
+// coerceArgs() restores correct types before the actual MCP call.
+function relaxSchemaTypes(schema) {
+  if (!schema?.properties) return schema;
+  const props = {};
+  for (const [key, def] of Object.entries(schema.properties)) {
+    const { type: _t, ...rest } = def;
+    props[key] = rest;
+  }
+  return { ...schema, properties: props };
+}
+
+function toOpenAIToolsRelaxed(mcpTools) {
+  return mcpTools.map(t => ({
+    type: 'function',
+    function: {
       name:        t.name,
       description: t.description,
-      parameters:  { ...t.inputSchema, $schema: undefined },
-    })),
+      parameters:  relaxSchemaTypes(t.inputSchema),
+    },
+  }));
+}
+
+function toGeminiTools(mcpTools) {
+  return [{
+    functionDeclarations: mcpTools.map(t => {
+      // Gemini rejects $schema and additionalProperties — strip both
+      const { $schema: _s, additionalProperties: _a, ...schema } = t.inputSchema ?? {};
+      return { name: t.name, description: t.description, parameters: schema };
+    }),
   }];
 }
 
@@ -189,6 +240,11 @@ async function streamOpenAICompatible({ provider, model, messages, systemPrompt,
   const client = new OpenAI(clientOpts);
   const tools  = await getMcpTools();
 
+  // Custom providers (Groq, Mistral, etc.) often emit numbers as strings —
+  // use relaxed schemas so their server-side validation doesn't reject the call.
+  // coerceArgs() fixes types before the actual MCP tool call.
+  const openaiTools = baseURL ? toOpenAIToolsRelaxed(tools) : toOpenAITools(tools);
+
   send(res, { type: 'model_used', provider, model });
 
   const msgs = [
@@ -200,7 +256,7 @@ async function streamOpenAICompatible({ provider, model, messages, systemPrompt,
     const stream = await client.chat.completions.create({
       model,
       messages: msgs,
-      tools: toOpenAITools(tools),
+      tools: openaiTools,
       stream: true,
     });
 
@@ -244,6 +300,8 @@ async function streamOpenAICompatible({ provider, model, messages, systemPrompt,
       for (const tc of toolCallList) {
         let parsedArgs = {};
         try { parsedArgs = JSON.parse(tc.args); } catch {}
+        const toolSchema = tools.find(t => t.name === tc.name)?.inputSchema;
+        parsedArgs = coerceArgs(parsedArgs, toolSchema);
         send(res, { type: 'tool_start', name: tc.name, id: tc.id, input: parsedArgs });
 
         try {
@@ -335,6 +393,25 @@ async function streamGemini({ provider, model, messages, systemPrompt, res }) {
   }
 }
 
+// ── Single-provider dispatcher (used by streamChat + retry logic) ─────────────
+
+async function callProvider(provider, model, messages, systemPrompt, res) {
+  const opts = { provider, model, messages, systemPrompt, res };
+  if (provider === 'anthropic') {
+    await streamClaude(opts);
+  } else if (provider === 'openai') {
+    await streamOpenAICompatible({ ...opts, apiKey: getKey('openai') });
+  } else if (provider === 'google') {
+    await streamGemini(opts);
+  } else if (provider.startsWith('custom-')) {
+    const cp = getCustomProvider(provider);
+    if (!cp) throw new Error(`Custom provider "${provider}" not found.`);
+    await streamOpenAICompatible({ ...opts, model: cp.model, apiKey: cp.key, baseURL: cp.baseUrl });
+  } else {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 export async function streamChat({ provider, model, messages, systemPrompt }, res) {
@@ -354,34 +431,38 @@ export async function streamChat({ provider, model, messages, systemPrompt }, re
       resolvedModel    = selection.model;
     }
 
-    const opts = { provider: resolvedProvider, model: resolvedModel, messages, systemPrompt, res };
+    try {
+      await callProvider(resolvedProvider, resolvedModel, messages, systemPrompt, res);
 
-    if (resolvedProvider === 'anthropic') {
-      await streamClaude(opts);
+    } catch (err) {
+      if (!isRateLimitError(err)) throw err;
 
-    } else if (resolvedProvider === 'openai') {
-      await streamOpenAICompatible({ ...opts, apiKey: getKey('openai') });
+      // ── Rate-limited: try remaining connected providers in priority order ──
+      console.warn(`[aiRouter] ${resolvedProvider} rate-limited (${err.status ?? 429}), trying fallback`);
 
-    } else if (resolvedProvider === 'google') {
-      await streamGemini(opts);
+      const connected     = getConnectedIds();
+      const FALLBACK_MAP  = {
+        anthropic: 'claude-haiku-4-5-20251001',
+        openai:    'gpt-4o-mini',
+        google:    'gemini-1.5-flash',
+      };
+      const fallbacks = ['anthropic', 'openai', 'google']
+        .filter(p => p !== resolvedProvider && connected.includes(p));
 
-    } else if (resolvedProvider.startsWith('custom-')) {
-      // Custom OpenAI-compatible provider
-      const cp = getCustomProvider(resolvedProvider);
-      if (!cp) {
-        send(res, { type: 'error', message: `Custom provider "${resolvedProvider}" not found.` });
-        res.end();
-        return;
+      let succeeded = false;
+      for (const fp of fallbacks) {
+        try {
+          console.log(`[aiRouter] retrying with ${fp}`);
+          await callProvider(fp, FALLBACK_MAP[fp], messages, systemPrompt, res);
+          succeeded = true;
+          break;
+        } catch (err2) {
+          if (!isRateLimitError(err2)) { send(res, { type: 'error', message: err2.message }); return; }
+        }
       }
-      await streamOpenAICompatible({
-        ...opts,
-        model:   cp.model,
-        apiKey:  cp.key,
-        baseURL: cp.baseUrl,
-      });
-
-    } else {
-      send(res, { type: 'error', message: `Unknown provider: ${resolvedProvider}` });
+      if (!succeeded) {
+        send(res, { type: 'error', message: 'All connected providers are rate-limited. Please try again in a moment.' });
+      }
     }
 
   } catch (err) {
@@ -403,11 +484,16 @@ export async function generateTitle(message) {
   const clean = (s) => s.trim().replace(/^["']|["']$/g, '').replace(/[.!?]+$/, '').trim();
 
   if (has('google')) {
-    const genAI = new GoogleGenerativeAI(getKey('google'));
-    const result = await genAI
-      .getGenerativeModel({ model: 'gemini-2.0-flash' })
-      .generateContent(TITLE_PROMPT(message));
-    return clean(result.response.text());
+    try {
+      const genAI = new GoogleGenerativeAI(getKey('google'));
+      const result = await genAI
+        .getGenerativeModel({ model: 'gemini-2.0-flash' })
+        .generateContent(TITLE_PROMPT(message));
+      return clean(result.response.text());
+    } catch (err) {
+      if (!isRateLimitError(err)) throw err;
+      // quota exceeded — fall through to next provider
+    }
   }
 
   if (has('anthropic')) {

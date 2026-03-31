@@ -18,6 +18,7 @@ async function connect() {
     command: 'node',
     args: [MCP_SERVER_PATH],
     env: { ...process.env },       // pass full env so sap-wm-mcp finds its own .env via dotenv
+    cwd: dirname(MCP_SERVER_PATH), // set cwd to sap-wm-mcp dir so dotenv loads the right .env
     stderr: 'pipe',                // silence MCP server stderr from our console
   });
 
