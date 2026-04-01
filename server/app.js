@@ -382,6 +382,19 @@ app.get('/api/dashboard', async (req, res) => {
   });
 });
 
+// ── Bin data (for slotting / heatmap view) ────────────────────────────────────
+
+app.get('/api/bins', async (req, res) => {
+  const { warehouse } = req.query;
+  if (!warehouse) return res.status(400).json({ error: 'warehouse required' });
+  try {
+    const result = await callMcpTool('get_bin_status', { warehouse, top: 500 });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Auto-select preview (UI can call this to show which model will be used) ───
 
 app.post('/api/auto-select', (req, res) => {

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MessageSquare, Trash2, PanelLeftClose, Pencil, Search, X, Pin, PinOff, LayoutDashboard } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, PanelLeftClose, Pencil, Search, X, Pin, PinOff, LayoutDashboard, Grid3X3 } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { ConversationSummary, Provider } from '../types';
 import { useTranslation } from '../i18n';
@@ -11,12 +11,14 @@ interface Props {
   providers: Provider[];
   collapsed: boolean;
   dashboardActive: boolean;
+  slottingActive: boolean;
   onToggleCollapse: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
   onDashboard: () => void;
+  onSlotting: () => void;
 }
 
 const PINNED_KEY = 'wma_pinned_ids';
@@ -56,8 +58,8 @@ function ProviderDot({ provider }: { provider: Provider }) {
 }
 
 export function Sidebar({
-  conversations, activeId, providers, collapsed, dashboardActive,
-  onToggleCollapse, onSelect, onNew, onDelete, onRename, onDashboard,
+  conversations, activeId, providers, collapsed, dashboardActive, slottingActive,
+  onToggleCollapse, onSelect, onNew, onDelete, onRename, onDashboard, onSlotting,
 }: Props) {
   const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -244,6 +246,24 @@ export function Sidebar({
         >
           <LayoutDashboard size={15} className="flex-shrink-0" />
           {!collapsed && t('sidebar.dashboard')}
+        </button>
+      </div>
+
+      {/* ── Slotting ─────────────────────────────────────────────────────── */}
+      <div className={clsx('px-2 pb-2', collapsed && 'flex justify-center')}>
+        <button
+          onClick={onSlotting}
+          title={t('sidebar.warehouseSlotting')}
+          className={clsx(
+            'flex items-center gap-2 text-sm font-medium transition-colors rounded-lg w-full',
+            collapsed ? 'w-10 h-10 justify-center px-0 py-0' : 'px-3 py-2',
+            slottingActive
+              ? 'bg-wm-surface-2 text-wm-text'
+              : 'text-wm-text-dim hover:bg-wm-surface-2 hover:text-wm-text',
+          )}
+        >
+          <Grid3X3 size={15} className="flex-shrink-0" />
+          {!collapsed && t('sidebar.slotting')}
         </button>
       </div>
 

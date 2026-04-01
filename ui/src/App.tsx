@@ -6,6 +6,7 @@ import { Settings, Sun, Moon, FileText } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Chat } from './components/Chat';
 import { Dashboard } from './components/Dashboard';
+import { BinHeatmap } from './components/BinHeatmap';
 import { ModelSelector } from './components/ModelSelector';
 import { SettingsPanel } from './components/SettingsPanel';
 import {
@@ -65,7 +66,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [stats, setStats]                       = useState<ShiftStats | null>(null);
   const [statsWarehouse, setStatsWarehouse]     = useState<string | null>(null);
-  const [view, setView]                         = useState<'chat' | 'dashboard'>('chat');
+  const [view, setView]                         = useState<'chat' | 'dashboard' | 'slotting'>('chat');
   const [pendingQuery, setPendingQuery]         = useState('');
   const [showStats, setShowStats]               = useState(() => localStorage.getItem('wma_show_stats') !== 'false');
   const [autoBrief, setAutoBrief]               = useState(() => localStorage.getItem('wma_auto_brief') === 'true');
@@ -225,12 +226,14 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
           providers={providers}
           collapsed={sidebarCollapsed}
           dashboardActive={view === 'dashboard'}
+          slottingActive={view === 'slotting'}
           onToggleCollapse={() => setSidebarCollapsed(c => !c)}
           onSelect={handleSelectConversation}
           onNew={handleNewConversation}
           onDelete={handleDeleteConversation}
           onRename={handleRenameConversation}
           onDashboard={() => setView('dashboard')}
+          onSlotting={() => setView('slotting')}
         />
 
         {/* Main */}
@@ -358,13 +361,19 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
             </motion.div>
           )}
 
-          {/* Dashboard / Chat */}
+          {/* Dashboard / Slotting / Chat */}
           {view === 'dashboard' && statsWarehouse ? (
             <Dashboard
               warehouse={statsWarehouse}
               onAskAI={handleAskFromDashboard}
             />
           ) : view === 'dashboard' && !statsWarehouse ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-wm-muted text-sm text-center max-w-xs">{t('app.noDashboard')}</p>
+            </div>
+          ) : view === 'slotting' && statsWarehouse ? (
+            <BinHeatmap warehouse={statsWarehouse} />
+          ) : view === 'slotting' && !statsWarehouse ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-wm-muted text-sm text-center max-w-xs">{t('app.noDashboard')}</p>
             </div>

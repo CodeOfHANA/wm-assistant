@@ -188,6 +188,37 @@ export interface DashboardData {
 export const getDashboard = (warehouse: string) =>
   get<DashboardData>(`/dashboard?warehouse=${encodeURIComponent(warehouse)}`);
 
+// ── Bin slotting data ─────────────────────────────────────────────────────────
+
+export interface BinRecord {
+  bin: string;
+  storageType: string;
+  storageSection: string;
+  binType: string;
+  empty: boolean;
+  full: boolean;
+  blockedPutaway: boolean;
+  blockedRemoval: boolean;
+  quants: number;
+  maxWeight: number;
+  occupiedWeight: number;
+  weightUnit: string;
+  totalCapacity: number;
+  remainingCapacity: number;
+  lastMovement: string;
+  dynamic: boolean;
+}
+
+export interface BinsResult {
+  warehouse: string;
+  count: number;
+  truncated: boolean;
+  bins: BinRecord[];
+}
+
+export const getBins = (warehouse: string) =>
+  get<BinsResult>(`/bins?warehouse=${encodeURIComponent(warehouse)}`);
+
 // ── Auto-select preview ───────────────────────────────────────────────────────
 
 export const getAutoSelect = (message: string) =>
