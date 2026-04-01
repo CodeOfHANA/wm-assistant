@@ -138,6 +138,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
 
   const handleSelectConversation = async (id: string) => {
     setView('chat');
+    setPendingQuery(''); // clear any stale dashboard query
     try {
       const conv = await getConversation(id);
       setActiveConv(conv);
@@ -148,6 +149,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
 
   const handleNewConversation = async () => {
     setView('chat');
+    setPendingQuery(''); // clear any stale dashboard query before deciding auto-brief
     try {
       const conv = await createConversation(t('sidebar.new'));
       setConversations(prev => [
