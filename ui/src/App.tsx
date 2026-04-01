@@ -219,7 +219,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex h-screen bg-wm-bg overflow-hidden">
+      <div className="flex h-screen bg-wm-bg overflow-hidden app-shell">
 
         {/* Sidebar */}
         <Sidebar

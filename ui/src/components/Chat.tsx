@@ -146,7 +146,7 @@ function ToolCard({ tool, warehouse, onAction }: { tool: ToolEvent; warehouse?: 
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 max-h-80 overflow-y-auto">
+            <div className="px-3 pb-3 max-h-80 overflow-y-auto tool-result-body">
               <ToolResultCard toolName={tool.name} result={tool.result} warehouse={warehouse} onAction={onAction} />
             </div>
           </motion.div>
@@ -879,13 +879,13 @@ export function Chat({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative">
+    <div className="flex-1 flex flex-col overflow-hidden relative chat-outer">
 
       {/* Message area */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-6 py-6 space-y-5 relative"
+        className="flex-1 overflow-y-auto px-6 py-6 space-y-5 relative chat-scroll"
       >
         {/* Print header — only visible when printing */}
         <div className="hidden print:block mb-6 pb-4 border-b-2 border-gray-300">

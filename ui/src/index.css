@@ -64,20 +64,59 @@ html, body, #root {
 
 /* ── Print / PDF styles ──────────────────────────────────────────────────────── */
 @media print {
-  /* Force light background for printing */
+  /* Honour colour for backgrounds / borders */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  /* Hide everything except the conversation */
+  /* Hide chrome — sidebar, header bar, input bar, floating buttons */
   .no-print { display: none !important; }
 
-  /* Reset layout — full width single column */
-  html, body, #root { height: auto; overflow: visible; background: #fff; color: #0a1214; }
-  .print-layout { display: block !important; }
+  /* Reset root layout so the full conversation can flow naturally */
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #0a1214 !important;
+  }
 
-  /* Page breaks */
+  /* App shell: was flex h-screen overflow-hidden — make it a simple block */
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* flex-1 column that wraps the header + chat — expand to full height */
+  .app-shell > div {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Chat outer container */
+  .chat-outer {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* The scrollable message area — remove the clip so all messages print */
+  .chat-scroll {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Tool result card bodies — remove the max-h-80 clip */
+  .tool-result-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Page breaks between messages */
   .print-break-before { break-before: page; }
 
-  /* Clean up chat bubbles for print */
+  /* Chat bubble colours for print */
   .print-bubble-user { background: #e4f1f3 !important; border-radius: 8px; }
   .print-bubble-ai   { background: #f8fbfc !important; border: 1px solid #c4dce1; border-radius: 8px; }
 }
