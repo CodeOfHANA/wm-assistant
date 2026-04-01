@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2, Mic, MicOff, RotateCcw } from 'lucide-react';
 import { Relacottchen, WorkingRelacottchen } from './Relacottchen';
@@ -444,6 +444,65 @@ export function Chat({
     initialMessages.map(msg => ({ msg })),
   );
   const [input, setInput] = useState('');
+  const [suggestionIdx, setSuggestionIdx] = useState(0);
+
+  // ── Autocomplete suggestions derived from tool results in this conversation ──
+  const { knownTOs, knownMaterials } = useMemo(() => {
+    const tos = new Map<string, string>(); // toNumber → label (toNumber + material)
+    const mats = new Map<string, string>(); // material → label
+    for (const cm of chatMessages) {
+      for (const te of cm.toolEvents ?? []) {
+        const r = te.result as Record<string, unknown> | null | undefined;
+        if (!r || typeof r !== 'object') continue;
+        // orders[] (open TOs, history)
+        for (const o of (r.orders as Record<string, unknown>[] | undefined) ?? []) {
+          const num = String(o.toNumber ?? '').trim();
+          const mat = String(o.material ?? (
+            (o.items as Record<string, unknown>[] | undefined)?.[0]?.material ?? ''
+          )).trim();
+          if (num) tos.set(num, mat ? `${num} · ${mat}` : num);
+          if (mat) mats.set(mat, mat);
+        }
+        // stock[]
+        for (const s of (r.stock as Record<string, unknown>[] | undefined) ?? []) {
+          const mat = String(s.material ?? '').trim();
+          if (mat) mats.set(mat, mat);
+        }
+        // bins[] with material
+        for (const b of (r.bins as Record<string, unknown>[] | undefined) ?? []) {
+          const mat = String(b.material ?? '').trim();
+          if (mat) mats.set(mat, mat);
+        }
+        // negativeQuants[]
+        for (const n of (r.negativeQuants as Record<string, unknown>[] | undefined) ?? []) {
+          const mat = String(n.material ?? '').trim();
+          if (mat) mats.set(mat, mat);
+        }
+      }
+    }
+    return {
+      knownTOs:       [...tos.entries()].map(([v, l]) => ({ value: v, label: l })),
+      knownMaterials: [...mats.keys()].map(v => ({ value: v, label: v })),
+    };
+  }, [chatMessages]);
+
+  // Compute filtered suggestions for the current input prefix
+  const suggestions = useMemo(() => {
+    if (input.startsWith('#')) {
+      const q = input.slice(1).toLowerCase();
+      return knownTOs.filter(s => s.value.toLowerCase().includes(q) || s.label.toLowerCase().includes(q)).slice(0, 6);
+    }
+    if (input.startsWith('@')) {
+      const q = input.slice(1).toLowerCase();
+      return knownMaterials.filter(s => s.value.toLowerCase().includes(q)).slice(0, 6);
+    }
+    return [];
+  }, [input, knownTOs, knownMaterials]);
+
+  const showSuggestions = suggestions.length > 0;
+
+  // Reset selected index when suggestion list changes
+  useEffect(() => { setSuggestionIdx(0); }, [suggestions.length]);
 
   // Auto-send when navigating from Dashboard "Ask AI" button
   useEffect(() => {
@@ -784,7 +843,29 @@ export function Chat({
     }
   };
 
+  const applySuggestion = (item: { value: string; label: string }) => {
+    setInput(input.startsWith('#') ? `#${item.value}` : `@${item.value}`);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigate / pick autocomplete suggestion
+    if (showSuggestions) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSuggestionIdx(i => Math.min(i + 1, suggestions.length - 1)); return; }
+      if (e.key === 'ArrowUp' && input.trim())  { e.preventDefault(); setSuggestionIdx(i => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        applySuggestion(suggestions[suggestionIdx]);
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        applySuggestion(suggestions[suggestionIdx]);
+        setTimeout(() => handleSend(), 0);
+        return;
+      }
+      if (e.key === 'Escape') { setInput(''); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -1271,6 +1352,40 @@ export function Chat({
 
       {/* Input bar */}
       <div className="px-4 py-4 border-t border-wm-border bg-wm-surface no-print">
+        {/* Autocomplete dropdown */}
+        <AnimatePresence>
+          {showSuggestions && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.12 }}
+              className="mb-2 bg-wm-surface border border-wm-border rounded-xl overflow-hidden shadow-lg"
+            >
+              <div className="px-3 py-1.5 border-b border-wm-border flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-wm-accent">
+                  {input.startsWith('#') ? t('chat.suggestTO') : t('chat.suggestMaterial')}
+                </span>
+                <span className="text-[9px] text-wm-muted ml-auto">{t('chat.suggestHint')}</span>
+              </div>
+              {suggestions.map((s, i) => (
+                <button
+                  key={s.value}
+                  onMouseDown={e => { e.preventDefault(); applySuggestion(s); }}
+                  className={clsx(
+                    'w-full text-left px-3 py-1.5 text-[11px] transition-colors flex items-center gap-2',
+                    i === suggestionIdx
+                      ? 'bg-wm-primary/20 text-wm-text'
+                      : 'text-wm-text-dim hover:bg-wm-surface-2',
+                  )}
+                >
+                  <span className="font-mono text-wm-accent">{input.startsWith('#') ? '#' : '@'}{s.value}</span>
+                  {s.label !== s.value && <span className="text-wm-muted truncate">{s.label.replace(s.value + ' · ', '')}</span>}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex items-end gap-2 bg-wm-surface-2 border border-wm-border rounded-2xl px-4 py-2 focus-within:border-wm-border-hover transition-colors">
           <textarea
             ref={textareaRef}
