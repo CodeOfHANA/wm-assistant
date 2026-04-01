@@ -131,6 +131,7 @@ wm-assistant/
 │           ├── Sidebar.tsx         ← collapsible (64/256px spring), logo always visible
 │           ├── Chat.tsx            ← streaming thread, tool cards, follow-up chips, suggestion chips
 │           ├── Dashboard.tsx       ← shift overview: KPI cards, TO/replen/anomaly/util panels
+│           ├── BinHeatmap.tsx      ← warehouse slotting view: occupancy/age/replen modes, investigate click-through
 │           ├── ModelSelector.tsx   ← provider/model dropdown, tier icons
 │           ├── MaterialTooltip.tsx ← hover tooltip showing live stock summary for a material
 │           ├── Relacottchen.tsx    ← RELACON logo SVG + animated "working" variant
@@ -363,12 +364,15 @@ After first exchange completes:
 - ✅ Settings UX: Reset to defaults button for Project Instructions, creation date on memory facts, fix hardcoded "Saved" string
 - ✅ Markdown export: tool call JSON results included as fenced code blocks
 - ✅ Dashboard shortcut: `d` key toggles Dashboard view; listed in keyboard cheatsheet overlay
+- ✅ Bin heatmap / slotting view: `Grid3X3` nav button → `BinHeatmap.tsx`; three view modes (Occupancy / Last Movement / Replenishment) with segmented switcher; dead-stock threshold slider (30–180 days) in age mode; click any occupied bin cell → opens new chat pre-loaded with bin investigation query; `/api/bins` + `/api/replen-bins` server endpoints; full EN + DE i18n (`slotting.*` keys)
+- ✅ Streaming smoothness: RAF drain buffer (3 chars/frame normal, 12/frame catch-up) — matches Claude/GPT-style rendering; fixed response disappearing mid-stream by guarding `finally` cleanup behind `!streamDoneRef.current`
+- ✅ Print fix: named CSS classes (`app-shell`, `chat-outer`, `chat-scroll`, `tool-result-body`) + `@media print` overrides — full conversation now prints across pages
+- ✅ Dashboard query isolation: `setPendingQuery('')` on new/select conversation — stale dashboard query no longer leaks into fresh chats
 
 ## What's Next
 
 - **Conversation labels / color tags** — tag conversations in sidebar
 - **Message reactions** — 👍/👎 on AI responses
-- **Bin heatmap / slotting view** — requires bin grid data from MCP server
 - **Team / role mode** — multi-user, auth, role-based visibility
 - **Token / cost estimator** — approximate token count + cost badge per response
 - **Phase 2: BTP CF deployment** — full plan in `../sap-wm-mcp/docs/phase2-implementation-plan.md`
