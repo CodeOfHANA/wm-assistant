@@ -450,11 +450,15 @@ interface Props {
   providers: Provider[];
   showStats: boolean;
   autoBrief: boolean;
+  showDashboard: boolean;
+  showSlotting: boolean;
   language: string;
   onClose: () => void;
   onProvidersChange: () => void;
   onShowStatsChange: (v: boolean) => void;
   onAutoBriefChange: (v: boolean) => void;
+  onShowDashboardChange: (v: boolean) => void;
+  onShowSlottingChange: (v: boolean) => void;
   onLanguageChange: (lang: string) => void;
 }
 
@@ -477,7 +481,7 @@ P01 — Picking zone (primary replenishment target)
 - Open TOs older than X days should be flagged
 -->`;
 
-export function SettingsPanel({ open, providers, showStats, autoBrief, language, onClose, onProvidersChange, onShowStatsChange, onAutoBriefChange, onLanguageChange }: Props) {
+export function SettingsPanel({ open, providers, showStats, autoBrief, showDashboard, showSlotting, language, onClose, onProvidersChange, onShowStatsChange, onAutoBriefChange, onShowDashboardChange, onShowSlottingChange, onLanguageChange }: Props) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [project, setProject]           = useState<Project | null>(null);
@@ -745,6 +749,18 @@ export function SettingsPanel({ open, providers, showStats, autoBrief, language,
                   onChange={onAutoBriefChange}
                   label={t('settings.autoBrief')}
                   description={t('settings.autoBriefDesc')}
+                />
+                <Toggle
+                  checked={showDashboard}
+                  onChange={onShowDashboardChange}
+                  label={t('settings.showDashboard')}
+                  description={t('settings.showDashboardDesc')}
+                />
+                <Toggle
+                  checked={showSlotting}
+                  onChange={onShowSlottingChange}
+                  label={t('settings.showSlotting')}
+                  description={t('settings.showSlottingDesc')}
                 />
               </Section>
 

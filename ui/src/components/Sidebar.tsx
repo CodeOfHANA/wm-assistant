@@ -12,6 +12,8 @@ interface Props {
   collapsed: boolean;
   dashboardActive: boolean;
   slottingActive: boolean;
+  showDashboard: boolean;
+  showSlotting: boolean;
   onToggleCollapse: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
@@ -59,6 +61,7 @@ function ProviderDot({ provider }: { provider: Provider }) {
 
 export function Sidebar({
   conversations, activeId, providers, collapsed, dashboardActive, slottingActive,
+  showDashboard, showSlotting,
   onToggleCollapse, onSelect, onNew, onDelete, onRename, onDashboard, onSlotting,
 }: Props) {
   const { t } = useTranslation();
@@ -232,7 +235,7 @@ export function Sidebar({
       </div>
 
       {/* ── Dashboard ────────────────────────────────────────────────────── */}
-      <div className={clsx('px-2 pb-2', collapsed && 'flex justify-center')}>
+      {showDashboard && <div className={clsx('px-2 pb-2', collapsed && 'flex justify-center')}>
         <button
           onClick={onDashboard}
           title={t('sidebar.warehouseDash')}
@@ -247,10 +250,10 @@ export function Sidebar({
           <LayoutDashboard size={15} className="flex-shrink-0" />
           {!collapsed && t('sidebar.dashboard')}
         </button>
-      </div>
+      </div>}
 
       {/* ── Slotting ─────────────────────────────────────────────────────── */}
-      <div className={clsx('px-2 pb-2', collapsed && 'flex justify-center')}>
+      {showSlotting && <div className={clsx('px-2 pb-2', collapsed && 'flex justify-center')}>
         <button
           onClick={onSlotting}
           title={t('sidebar.warehouseSlotting')}
@@ -265,7 +268,7 @@ export function Sidebar({
           <Grid3X3 size={15} className="flex-shrink-0" />
           {!collapsed && t('sidebar.slotting')}
         </button>
-      </div>
+      </div>}
 
       {/* ── Search ───────────────────────────────────────────────────────── */}
       {!collapsed && (

@@ -70,6 +70,8 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
   const [pendingQuery, setPendingQuery]         = useState('');
   const [showStats, setShowStats]               = useState(() => localStorage.getItem('wma_show_stats') !== 'false');
   const [autoBrief, setAutoBrief]               = useState(() => localStorage.getItem('wma_auto_brief') === 'true');
+  const [showDashboard, setShowDashboard]       = useState(() => localStorage.getItem('wma_show_dashboard') !== 'false');
+  const [showSlotting, setShowSlotting]         = useState(() => localStorage.getItem('wma_show_slotting') !== 'false');
 
   useEffect(() => {
     localStorage.setItem('wma_show_stats', String(showStats));
@@ -78,6 +80,16 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
   useEffect(() => {
     localStorage.setItem('wma_auto_brief', String(autoBrief));
   }, [autoBrief]);
+
+  useEffect(() => {
+    localStorage.setItem('wma_show_dashboard', String(showDashboard));
+    if (!showDashboard && view === 'dashboard') setView('chat');
+  }, [showDashboard]);
+
+  useEffect(() => {
+    localStorage.setItem('wma_show_slotting', String(showSlotting));
+    if (!showSlotting && view === 'slotting') setView('chat');
+  }, [showSlotting]);
 
   const prevStatsRef = useRef<ShiftStats | null>(null);
 
@@ -234,6 +246,8 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
           collapsed={sidebarCollapsed}
           dashboardActive={view === 'dashboard'}
           slottingActive={view === 'slotting'}
+          showDashboard={showDashboard}
+          showSlotting={showSlotting}
           onToggleCollapse={() => setSidebarCollapsed(c => !c)}
           onSelect={handleSelectConversation}
           onNew={handleNewConversation}
@@ -420,6 +434,8 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
           providers={providers}
           showStats={showStats}
           autoBrief={autoBrief}
+          showDashboard={showDashboard}
+          showSlotting={showSlotting}
           language={language}
           onClose={() => setSettingsOpen(false)}
           onProvidersChange={refreshProviders}
@@ -428,6 +444,8 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
             if (v && statsWarehouse) refreshStats(statsWarehouse);
           }}
           onAutoBriefChange={setAutoBrief}
+          onShowDashboardChange={setShowDashboard}
+          onShowSlottingChange={setShowSlotting}
           onLanguageChange={onLanguageChange}
         />
 
