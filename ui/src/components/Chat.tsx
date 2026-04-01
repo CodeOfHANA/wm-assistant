@@ -1514,6 +1514,16 @@ export function Chat({
                   ],
                 },
                 {
+                  group: t('shortcut.group.smartInput'),
+                  items: [
+                    { keys: ['#TO'], desc: t('shortcut.hashTO') },
+                    { keys: ['@MAT'], desc: t('shortcut.atMaterial') },
+                    { keys: ['Tab'], desc: t('shortcut.tabFill') },
+                    { keys: ['Enter'], desc: t('shortcut.enterSend') },
+                    { keys: ['↻'], desc: t('shortcut.repeatQuery') },
+                  ],
+                },
+                {
                   group: t('shortcut.group.general'),
                   items: [
                     { keys: ['d'], desc: t('shortcut.dashboard') },
