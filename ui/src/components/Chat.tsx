@@ -988,7 +988,7 @@ export function Chat({
                     <button
                       key={q}
                       onClick={() => handleSend(q)}
-                      className="text-left text-xs text-wm-text-dim hover:text-wm-text hover:bg-wm-surface-2 rounded-lg px-2 py-1.5 transition-colors leading-snug"
+                      className="text-left text-xs text-wm-text-dim hover:text-wm-text hover:bg-wm-surface-2 rounded-lg px-2 py-1.5 transition-colors leading-snug [overflow-wrap:anywhere]"
                     >
                       {q}
                     </button>
