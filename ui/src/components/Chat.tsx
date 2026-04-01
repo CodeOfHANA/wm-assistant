@@ -698,6 +698,7 @@ export function Chat({
                 ]);
                 setStreamingText('');
                 setStreamingTools([]);
+                setIsStreaming(false); // keep streaming=true until drain finishes
 
                 onResponseDone?.();
 
@@ -722,7 +723,7 @@ export function Chat({
                   }
                 }
               };
-              // If no text came through (tool-only response), drain loop may not be running
+              // If no text came through (tool-only response), drain loop is not running
               if (!rafIdRef.current) {
                 finalizeRef.current();
                 finalizeRef.current = null;
@@ -740,15 +741,19 @@ export function Chat({
         ]);
       }
     } finally {
-      // Abort / error path: flush remaining buffer immediately so partial content shows
-      if (incomingBufRef.current.length > 0) {
-        setStreamingText(cur => cur + incomingBufRef.current);
-        incomingBufRef.current = '';
+      if (!streamDoneRef.current) {
+        // Abort / error path: flush remaining buffer immediately so partial content shows,
+        // then stop the drain loop — finalize will NOT be called.
+        if (incomingBufRef.current.length > 0) {
+          setStreamingText(cur => cur + incomingBufRef.current);
+          incomingBufRef.current = '';
+        }
+        if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+        finalizeRef.current = null;
+        setIsStreaming(false);
       }
-      if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
-      streamDoneRef.current = true;
-      finalizeRef.current   = null;
-      setIsStreaming(false);
+      // Normal completion path: streamDoneRef.current is true, drain loop is still
+      // running and will call finalizeRef (which calls setIsStreaming(false)) — do nothing here.
     }
   };
 
