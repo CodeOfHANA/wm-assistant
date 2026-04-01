@@ -196,9 +196,36 @@ function toAgeBadge(days: number | null, todayLabel: string): { label: string; c
 
 const GI_TYPES = new Set(['916', '999', '998']);
 
+/** Normalize both flat (get_open_transfer_orders) and nested (get_transfer_order_history) shapes. */
+function normalizeToRow(o: Record<string, unknown>): ToRow & { extraItems?: number } {
+  // Nested history format: material lives in items[], age in created.daysAgo
+  if (Array.isArray(o.items)) {
+    const items = o.items as Record<string, unknown>[];
+    const first = items[0] ?? {};
+    const created = o.created as Record<string, unknown> | undefined;
+    return {
+      toNumber:         String(o.toNumber ?? ''),
+      toItem:           String(first.item ?? ''),
+      status:           String(o.status ?? ''),
+      ageFlag:          '',
+      daysSinceCreation: (created?.daysAgo as number | null) ?? null,
+      material:         String(first.material ?? ''),
+      sourceType:       String(first.sourceType ?? ''),
+      sourceBin:        String(first.sourceBin ?? ''),
+      destType:         String(first.destType ?? ''),
+      destBin:          String(first.destBin ?? ''),
+      openQty:          (first.requiredQty as number) ?? 0,
+      uom:              String(first.uom ?? ''),
+      extraItems:       items.length > 1 ? items.length - 1 : 0,
+    };
+  }
+  // Flat format — pass through as-is
+  return { ...(o as unknown as ToRow), extraItems: 0 };
+}
+
 function TransferOrderTable({ data, warehouse, onAction }: { data: Record<string, unknown>; warehouse?: string | null; onAction?: (msg: string, meta?: ActionMeta) => void }) {
   const { t } = useTranslation();
-  const orders = data.orders as ToRow[];
+  const orders = (data.orders as Record<string, unknown>[]).map(normalizeToRow);
   const wh = data.warehouse as string;
   if (!orders.length) return <p className="text-[11px] text-wm-muted">{t('tool.empty.tos')}</p>;
   const openOrders = orders.filter(o => o.status !== 'confirmed');
@@ -206,7 +233,7 @@ function TransferOrderTable({ data, warehouse, onAction }: { data: Record<string
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] text-wm-muted">
-          {data.count as number} open TO{(data.count as number) !== 1 ? 's' : ''} · WH {wh}
+          {data.count as number} TO{(data.count as number) !== 1 ? 's' : ''} · WH {wh}
         </p>
         <div className="flex items-center gap-2">
           <ExcelBtn onClick={() => exportToXlsx(
@@ -236,7 +263,12 @@ function TransferOrderTable({ data, warehouse, onAction }: { data: Record<string
             const age = toAgeBadge(o.daysSinceCreation, t('tool.today'));
             return (
               <tr key={i} className={clsx('border-b border-wm-border/40 hover:bg-wm-surface-2/40 transition-colors', age.rowCls)}>
-                <Td><span className="font-mono text-wm-accent">{o.toNumber}</span></Td>
+                <Td>
+                  <span className="font-mono text-wm-accent">{o.toNumber}</span>
+                  {(o as ToRow & { extraItems?: number }).extraItems ? (
+                    <span className="ml-1 text-[9px] text-wm-muted">+{(o as ToRow & { extraItems?: number }).extraItems}</span>
+                  ) : null}
+                </Td>
                 <Td>{o.material ? <MaterialTooltip material={o.material} warehouse={warehouse ?? wh} /> : '—'}</Td>
                 <Td><span className="text-wm-muted">{o.sourceType}/</span>{o.sourceBin}</Td>
                 <Td><span className="text-wm-muted">{o.destType}/</span>{o.destBin}</Td>
