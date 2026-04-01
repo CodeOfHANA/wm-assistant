@@ -395,6 +395,19 @@ app.get('/api/bins', async (req, res) => {
   }
 });
 
+// Return just the bin names that need replenishment (for heatmap overlay)
+app.get('/api/replen-bins', async (req, res) => {
+  const { warehouse } = req.query;
+  if (!warehouse) return res.status(400).json({ error: 'warehouse required' });
+  try {
+    const result = await callMcpTool('get_replenishment_needs', { warehouse, top: 200 });
+    const bins = (result?.bins ?? []).map(b => b.bin).filter(Boolean);
+    res.json({ bins });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Auto-select preview (UI can call this to show which model will be used) ───
 
 app.post('/api/auto-select', (req, res) => {

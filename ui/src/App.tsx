@@ -14,7 +14,7 @@ import {
   deleteConversation, renameConversation, getProviders,
   getProject, getShiftStats,
 } from './api/client';
-import type { ShiftStats } from './api/client';
+import type { ShiftStats, BinRecord } from './api/client';
 import type { ConversationSummary, Conversation, Provider } from './types';
 
 function StatPill({ label, value, alertColor }: {
@@ -163,6 +163,11 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleInvestigateBin = async (bin: BinRecord) => {
+    const query = `Investigate bin ${bin.bin} (storage type ${bin.storageType}) in warehouse ${statsWarehouse}: what materials are stored there, when was it last moved, are there any open transfer orders involving this bin, and is there anything unusual?`;
+    await handleAskFromDashboard(query);
   };
 
   const handleAskFromDashboard = async (query: string) => {
@@ -374,7 +379,7 @@ function AppInner({ language, onLanguageChange }: { language: string; onLanguage
               <p className="text-wm-muted text-sm text-center max-w-xs">{t('app.noDashboard')}</p>
             </div>
           ) : view === 'slotting' && statsWarehouse ? (
-            <BinHeatmap warehouse={statsWarehouse} />
+            <BinHeatmap warehouse={statsWarehouse} onInvestigateBin={handleInvestigateBin} />
           ) : view === 'slotting' && !statsWarehouse ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-wm-muted text-sm text-center max-w-xs">{t('app.noDashboard')}</p>

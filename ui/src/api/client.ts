@@ -219,6 +219,9 @@ export interface BinsResult {
 export const getBins = (warehouse: string) =>
   get<BinsResult>(`/bins?warehouse=${encodeURIComponent(warehouse)}`);
 
+export const getReplenBins = (warehouse: string) =>
+  get<{ bins: string[] }>(`/replen-bins?warehouse=${encodeURIComponent(warehouse)}`);
+
 // ── Auto-select preview ───────────────────────────────────────────────────────
 
 export const getAutoSelect = (message: string) =>
