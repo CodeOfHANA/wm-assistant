@@ -461,6 +461,12 @@ export function Chat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Smooth streaming render buffer — prevents burst "hit" effect
+  const incomingBufRef = useRef('');          // text queued but not yet displayed
+  const rafIdRef       = useRef<number | null>(null);
+  const streamDoneRef  = useRef(false);
+  const finalizeRef    = useRef<(() => void) | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
 
@@ -495,12 +501,21 @@ export function Chat({
     recognition.start();
   };
 
+  // Cancel RAF on unmount
+  useEffect(() => {
+    return () => { if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current); };
+  }, []);
+
   // Sync external messages (when conversation switches)
   useEffect(() => {
     setChatMessages(initialMessages.map(msg => ({ msg })));
     setStreamingText('');
     setStreamingTools([]);
     setCurrentModel(null);
+    incomingBufRef.current = '';
+    streamDoneRef.current  = true;
+    finalizeRef.current    = null;
+    if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
   }, [conversationId]);
 
   // Auto-scroll — only when already near the bottom
@@ -567,6 +582,12 @@ export function Chat({
     setStreamingTools([]);
     setCurrentModel(null);
 
+    // Reset streaming render buffer
+    incomingBufRef.current = '';
+    streamDoneRef.current  = false;
+    finalizeRef.current    = null;
+    if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+
     // Append user message immediately, then scroll to bottom unconditionally
     const userMsg: ChatMessage = { msg: { role: 'user', content: text, createdAt: new Date().toISOString() } };
     setChatMessages(prev => [...prev, userMsg]);
@@ -579,6 +600,30 @@ export function Chat({
     let accText = '';
     const accTools: ToolEvent[] = [];
     let usedModel: { provider: string; model: string } | null = null;
+
+    // Drain loop — runs each animation frame, emits chars at a steady rate
+    const drainBuffer = () => {
+      const remaining = incomingBufRef.current.length;
+      if (remaining > 0) {
+        // Catch up fast if buffer is large; smooth when nearly caught up
+        const take = remaining > 120 ? Math.min(remaining, 12) : 3;
+        const chunk = incomingBufRef.current.slice(0, take);
+        incomingBufRef.current = incomingBufRef.current.slice(take);
+        setStreamingText(cur => cur + chunk);
+      }
+      if (incomingBufRef.current.length > 0 || !streamDoneRef.current) {
+        rafIdRef.current = requestAnimationFrame(drainBuffer);
+      } else {
+        // Buffer empty and stream complete — finalise
+        rafIdRef.current = null;
+        finalizeRef.current?.();
+        finalizeRef.current = null;
+      }
+    };
+
+    const startDrain = () => {
+      if (!rafIdRef.current) rafIdRef.current = requestAnimationFrame(drainBuffer);
+    };
 
     const { streamChat } = await import('../api/client');
 
@@ -600,7 +645,8 @@ export function Chat({
 
             case 'text':
               accText += event.delta ?? '';
-              setStreamingText(accText);
+              incomingBufRef.current += event.delta ?? '';
+              startDrain();
               break;
 
             case 'tool_start': {
@@ -639,39 +685,47 @@ export function Chat({
               break;
 
             case 'done':
-              // Finalise — move streaming state into messages
-              setChatMessages(prev => [
-                ...prev,
-                {
-                  msg: { role: 'assistant', content: accText, createdAt: new Date().toISOString() },
-                  toolEvents: [...accTools],
-                  modelUsed: usedModel ?? undefined,
-                },
-              ]);
-              setStreamingText('');
-              setStreamingTools([]);
+              // Mark stream complete; drain loop will call finalizeRef when buffer empties
+              streamDoneRef.current = true;
+              finalizeRef.current = () => {
+                setChatMessages(prev => [
+                  ...prev,
+                  {
+                    msg: { role: 'assistant', content: accText, createdAt: new Date().toISOString() },
+                    toolEvents: [...accTools],
+                    modelUsed: usedModel ?? undefined,
+                  },
+                ]);
+                setStreamingText('');
+                setStreamingTools([]);
 
-              onResponseDone?.();
+                onResponseDone?.();
 
-              // AI-generated title after first exchange
-              if (conversationId && chatMessages.length === 0 && onTitleChange) {
-                generateConversationTitle(conversationId, text)
-                  .then(({ title }) => onTitleChange(title))
-                  .catch(() => {
-                    const words = text.trim().split(/\s+/);
-                    onTitleChange(words.slice(0, 7).join(' '));
-                  });
+                // AI-generated title after first exchange
+                if (conversationId && chatMessages.length === 0 && onTitleChange) {
+                  generateConversationTitle(conversationId, text)
+                    .then(({ title }) => onTitleChange(title))
+                    .catch(() => {
+                      const words = text.trim().split(/\s+/);
+                      onTitleChange(words.slice(0, 7).join(' '));
+                    });
 
-                // Auto-memory extraction — only when tools were called (real WM data)
-                if (accTools.length > 0) {
-                  extractConversationMemory(conversationId)
-                    .then(({ facts }) => {
-                      if (facts.length > 0) {
-                        toast(t('toast.memoryExtracted', { n: String(facts.length), s: facts.length !== 1 ? 's' : '' }));
-                      }
-                    })
-                    .catch(() => {});
+                  // Auto-memory extraction — only when tools were called (real WM data)
+                  if (accTools.length > 0) {
+                    extractConversationMemory(conversationId)
+                      .then(({ facts }) => {
+                        if (facts.length > 0) {
+                          toast(t('toast.memoryExtracted', { n: String(facts.length), s: facts.length !== 1 ? 's' : '' }));
+                        }
+                      })
+                      .catch(() => {});
+                  }
                 }
+              };
+              // If no text came through (tool-only response), drain loop may not be running
+              if (!rafIdRef.current) {
+                finalizeRef.current();
+                finalizeRef.current = null;
               }
               break;
           }
@@ -686,6 +740,14 @@ export function Chat({
         ]);
       }
     } finally {
+      // Abort / error path: flush remaining buffer immediately so partial content shows
+      if (incomingBufRef.current.length > 0) {
+        setStreamingText(cur => cur + incomingBufRef.current);
+        incomingBufRef.current = '';
+      }
+      if (rafIdRef.current) { cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; }
+      streamDoneRef.current = true;
+      finalizeRef.current   = null;
       setIsStreaming(false);
     }
   };
