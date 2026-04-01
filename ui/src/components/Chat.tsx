@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2, Mic, MicOff } from 'lucide-react';
+import { Send, Square, ChevronDown, Wrench, AlertCircle, User, Sunrise, PackageCheck, Boxes, RefreshCw, ShieldAlert, Copy, Check, Download, FileText, ClipboardList, SearchCheck, Wrench as WrenchIcon, Keyboard, X, Printer, Brain, Play, AlertTriangle, PackageX, ClipboardCheck, Repeat2, Mic, MicOff, RotateCcw } from 'lucide-react';
 import { Relacottchen, WorkingRelacottchen } from './Relacottchen';
 import { clsx } from 'clsx';
 import ReactMarkdown from 'react-markdown';
@@ -572,11 +572,27 @@ export function Chat({
     return () => window.removeEventListener('keydown', handler);
   }, [onNew]);
 
+  const [lastQuery, setLastQuery] = useState('');
+
+  /** Expand #TO_NUM and @MATERIAL shortcuts before sending. */
+  const expandShortcuts = (raw: string): string => {
+    const wh = warehouse ?? '';
+    // #814 or #0000000814 → investigate that TO
+    const toMatch = raw.match(/^#(\d+)\s*$/);
+    if (toMatch) return `Show details for transfer order ${toMatch[1]} in warehouse ${wh}`;
+    // @TG0001 → stock lookup
+    const matMatch = raw.match(/^@(\S+)\s*$/);
+    if (matMatch) return `Show stock for material ${matMatch[1]} in warehouse ${wh}`;
+    return raw;
+  };
+
   const handleSend = async (override?: string) => {
-    const text = (override ?? input).trim();
+    const raw  = (override ?? input).trim();
+    const text = expandShortcuts(raw);
     if (!text || isStreaming) return;
 
     setInput('');
+    setLastQuery(raw);   // store the original (not expanded) for repeat
     setIsStreaming(true);
     setStreamingText('');
     setStreamingTools([]);
@@ -1265,6 +1281,18 @@ export function Chat({
             rows={1}
             className="flex-1 bg-transparent text-wm-text text-sm placeholder-wm-muted resize-none outline-none leading-relaxed max-h-40 py-1"
           />
+          {lastQuery && !isStreaming && (
+            <motion.button
+              onClick={() => handleSend(lastQuery)}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.93 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              title={t('chat.repeatQuery')}
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mb-0.5 text-wm-muted hover:text-wm-text hover:bg-wm-surface transition-colors"
+            >
+              <RotateCcw size={14} />
+            </motion.button>
+          )}
           {voiceSupported && !isStreaming && (
             <motion.button
               onClick={toggleVoice}
@@ -1312,7 +1340,9 @@ export function Chat({
         </div>
         <div className="flex items-center justify-between mt-1.5 px-1">
           <p className="text-[10px] text-wm-muted">
-            {t('chat.inputHint')}
+            {input.startsWith('#') || input.startsWith('@')
+              ? <span className="text-wm-accent">{t('chat.shortcutHint')}</span>
+              : t('chat.inputHint')}
           </p>
           <button
             onClick={() => setShowShortcuts(v => !v)}

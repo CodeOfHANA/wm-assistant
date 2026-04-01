@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   RefreshCw, AlertTriangle, TrendingDown, ArrowRightLeft,
   Package, Activity, Inbox, PackageCheck, BarChart2,
-  MessageSquarePlus, Clock, Printer,
+  MessageSquarePlus, Clock, Printer, ArrowRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { getDashboard } from '../api/client';
@@ -292,6 +292,20 @@ export function Dashboard({ warehouse, onAskAI }: Props) {
           )}
         </div>
 
+        {/* ── GR zone alert chip ──────────────────────────────────────────── */}
+        {!loading && (data?.grPending.count ?? 0) > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-700">
+            <Inbox size={12} className="flex-shrink-0" />
+            <span>{t('dashboard.grAlert', { n: String(data!.grPending.count) })}</span>
+            <button
+              onClick={() => onAskAI(t('dashboard.q.gr', { wh: warehouse }))}
+              className="ml-auto flex items-center gap-1 font-medium hover:underline flex-shrink-0"
+            >
+              {t('dashboard.investigate')} <ArrowRight size={10} />
+            </button>
+          </div>
+        )}
+
         {/* ── Open TOs + Alerts (two columns) ────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
@@ -311,10 +325,19 @@ export function Dashboard({ warehouse, onAskAI }: Props) {
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
-                    <TableHeader cols={t('dashboard.toCols').split(',')} />
+                    <thead>
+                      <tr className="border-b border-wm-border">
+                        {t('dashboard.toCols').split(',').map(c => (
+                          <th key={c} className="text-left py-1.5 px-2.5 text-[10px] font-medium text-wm-muted uppercase tracking-wide whitespace-nowrap">
+                            {c}
+                          </th>
+                        ))}
+                        <th className="py-1.5 px-2.5" />
+                      </tr>
+                    </thead>
                     <tbody>
                       {data.openTOs.topOrders.map((o, i) => (
-                        <tr key={i} className="border-b border-wm-border/40 hover:bg-wm-surface-2/50 transition-colors">
+                        <tr key={i} className="border-b border-wm-border/40 hover:bg-wm-surface-2/50 transition-colors group/tor">
                           <td className="py-1.5 px-2.5 text-[11px] font-mono text-wm-accent whitespace-nowrap">{o.toNumber}</td>
                           <td className="py-1.5 px-2.5 text-[11px] text-wm-text">{o.material ?? '—'}</td>
                           <td className="py-1.5 px-2.5 text-[11px] whitespace-nowrap">
@@ -329,6 +352,15 @@ export function Dashboard({ warehouse, onAskAI }: Props) {
                           </td>
                           <td className="py-1.5 px-2.5 text-right">
                             <AgeBadge days={o.daysSinceCreation} />
+                          </td>
+                          <td className="py-1.5 px-2.5 text-right">
+                            <button
+                              onClick={() => onAskAI(`Investigate transfer order ${o.toNumber} in warehouse ${warehouse}: show all items, current status, source and destination bins, material details, and whether it can be confirmed`)}
+                              title={t('dashboard.investigateTO')}
+                              className="opacity-0 group-hover/tor:opacity-100 transition-opacity text-wm-accent hover:text-wm-text flex items-center gap-0.5 text-[10px] whitespace-nowrap"
+                            >
+                              {t('dashboard.investigateTO')} <ArrowRight size={10} />
+                            </button>
                           </td>
                         </tr>
                       ))}
