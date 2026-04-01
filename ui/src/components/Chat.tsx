@@ -1486,9 +1486,9 @@ export function Chat({
               exit={{ opacity: 0, scale: 0.95, y: 8 }}
               transition={{ duration: 0.18, ease: [0.21, 0.47, 0.32, 0.98] }}
               onClick={e => e.stopPropagation()}
-              className="bg-wm-surface border border-wm-border rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4"
+              className="bg-wm-surface border border-wm-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 max-h-[90vh] flex flex-col"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Keyboard size={15} className="text-wm-accent" />
                   <h2 className="text-sm font-semibold text-wm-text">{t('shortcut.title')}</h2>
@@ -1497,6 +1497,7 @@ export function Chat({
                   <X size={14} />
                 </button>
               </div>
+              <div className="overflow-y-auto px-6 pb-6 flex-1">
 
               {[
                 {
@@ -1551,6 +1552,7 @@ export function Chat({
                   </div>
                 </div>
               ))}
+              </div>
             </motion.div>
           </motion.div>
         )}
