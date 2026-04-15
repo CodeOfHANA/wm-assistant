@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Resolve MCP server path: env var (absolute or relative to project root) or default sibling folder
 const MCP_SERVER_PATH = process.env.MCP_SERVER_PATH
   ? resolve(__dirname, '..', process.env.MCP_SERVER_PATH)
-  : resolve(__dirname, '../../sap-wm-mcp/index.js');
+  : resolve(__dirname, '../../relacon-wm-mcp/index.js');
 
 let client = null;
 let cachedTools = null;
@@ -17,8 +17,8 @@ async function connect() {
   const transport = new StdioClientTransport({
     command: 'node',
     args: [MCP_SERVER_PATH],
-    env: { ...process.env },       // pass full env so sap-wm-mcp finds its own .env via dotenv
-    cwd: dirname(MCP_SERVER_PATH), // set cwd to sap-wm-mcp dir so dotenv loads the right .env
+    env: { ...process.env },       // pass full env so relacon-wm-mcp finds its own .env via dotenv
+    cwd: dirname(MCP_SERVER_PATH), // set cwd to relacon-wm-mcp dir so dotenv loads the right .env
     stderr: 'pipe',                // silence MCP server stderr from our console
   });
 
